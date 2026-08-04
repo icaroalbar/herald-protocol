@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aip-protocol.org/schemas/well-known-aip.schema.json",
+  "title": "AIP Discovery Document",
+  "description": "Schema do documento retornado por GET /.well-known/aip, conforme RFC-0001 §6.",
+  "type": "object",
+  "required": ["aip_version", "origin", "capabilities", "policies"],
+  "additionalProperties": false,
+  "properties": {
+    "aip_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Versão do protocolo suportada pela origem, formato MAJOR.MINOR.",
+      "examples": ["1.0"]
+    },
+    "origin": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL base da origem que este documento descreve."
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Lista de formatos/capacidades suportados pela origem, em ordem de preferência.",
+      "items": {
+        "type": "string",
+        "enum": ["structured-json", "markdown", "html", "streaming", "graphql"]
+      },
+      "minItems": 1
+    },
+    "endpoints": {
+      "type": "object",
+      "description": "Endpoints alternativos por capacidade, quando a representação estruturada vive em uma rota separada.",
+      "additionalProperties": {
+        "type": "string",
+        "format": "uri-template"
+      }
+    },
+    "policies": {
+      "type": "object",
+      "required": ["default"],
+      "properties": {
+        "default": { "$ref": "#/$defs/policySet" },
+        "by_agent_type": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/policySet" },
+          "description": "Chaves devem ser um dos valores de AIP-Agent-Type (assistant, crawler, autonomous, search-index)."
+        },
+        "by_agent_id": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/policySet" },
+          "description": "Chaves são valores exatos de AIP-Agent-Id."
+        }
+      },
+      "additionalProperties": false
+    },
+    "analytics": {
+      "type": "object",
+      "properties": {
+        "reporting": {
+          "type": "string",
+          "enum": ["none", "aggregate"]
+        },
+        "contact": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Espaço reservado para extensões não normativas (RFC-0001 §10.3). Implementações MUST ignorar chaves desconhecidas.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "policySet": {
+      "type": "object",
+      "properties": {
+        "read": { "$ref": "#/$defs/policyValue" },
+        "train": { "$ref": "#/$defs/policyValue" },
+        "redistribute": { "$ref": "#/$defs/policyValue" },
+        "monetize": { "$ref": "#/$defs/policyValue" },
+        "rate_limit": {
+          "type": "object",
+          "required": ["requests", "window_seconds"],
+          "properties": {
+            "requests": { "type": "integer", "minimum": 1 },
+            "window_seconds": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "policyValue": {
+      "type": "string",
+      "enum": ["allow", "deny", "ask", "not-applicable"]
+    }
+  }
+}

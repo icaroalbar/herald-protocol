@@ -1,0 +1,29 @@
+{
+  "name": "@herald/sdk",
+  "version": "0.1.0",
+  "description": "SDK Node.js de referência para o Herald Protocol — identificação de agentes, negociação de capacidades, Policy Engine e métricas.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "herald-protocol",
+    "ai-agents",
+    "middleware",
+    "http"
+  ]
+}

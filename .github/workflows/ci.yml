@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Builda e testa os 4 pacotes na ordem de dependência real (sdk -> gateway/dashboard -> poc).
+# Cada pacote usa dependências locais via "file:../<pacote>" (não é um monorepo com
+# workspaces npm) — por isso o build de um pacote precisa ter rodado antes do `npm install`
+# do próximo, senão ele copia um `dist/` desatualizado ou inexistente. Ver TESTPLAN.md §5.
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: SDK — install, build, test
+        working-directory: sdk
+        run: |
+          npm install
+          npm run build
+          npm test
+
+      - name: Gateway — install, build, test
+        working-directory: gateway
+        run: |
+          npm install
+          npm run build
+          npm test
+
+      - name: Dashboard — install, build, test
+        working-directory: dashboard
+        run: |
+          npm install
+          npm run build
+          npm test
+
+      - name: PoC — install e build
+        working-directory: poc
+        run: |
+          npm install
+          npm run build
+
+      - name: PoC — smoke e2e (5 pontos do projeto + verificação de assinatura)
+        working-directory: poc
+        run: |
+          set -e
+          PORT=3000 node dist/server.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:3000/.well-known/herald > /dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          HERALD_POC_URL=http://localhost:3000 npm run demo

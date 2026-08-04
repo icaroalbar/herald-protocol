@@ -1,0 +1,36 @@
+{
+  "name": "@herald/dashboard",
+  "version": "0.1.0",
+  "description": "Dashboard Agent Analytics de referência para o Herald Protocol — visualiza métricas expostas por um ou mais Herald Gateways.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "public"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "herald-protocol",
+    "dashboard",
+    "analytics"
+  ]
+}
