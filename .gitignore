@@ -9,3 +9,7 @@ Projeto_Agent_Interaction_Protocol_AIP.pdf
 
 # saida de analise interna, nao faz parte da spec/implementacao
 graphify-out/
+
+# saida gerada (TypeDoc, sync do site de docs) — regenerada a cada build
+docs-generated/
+docs/src/

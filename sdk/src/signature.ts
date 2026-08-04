@@ -22,9 +22,9 @@ export interface SignatureParams {
 
 export interface RequestLike {
   method: string;
-  /** Path sem query string, ex: "/artigos/exemplo" (equivalente a @path da RFC 9421). */
+  /** Path sem query string, ex: "/artigos/exemplo" (equivalente a \@path da RFC 9421). */
   path: string;
-  /** Host[:porta], ex: "example.com" (equivalente a @authority da RFC 9421). */
+  /** Host[:porta], ex: "example.com" (equivalente a \@authority da RFC 9421). */
   authority: string;
   scheme?: "http" | "https";
   headers: Record<string, string | string[] | undefined>;
