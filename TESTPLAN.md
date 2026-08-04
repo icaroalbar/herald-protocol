@@ -154,14 +154,17 @@ Express, que é justamente o que o nível e2e existe para cobrir.
 
 ## 5. Lacunas conhecidas (não implementado nesta rodada)
 
-- **Teste de carga**: o `FixedWindowRateLimiter` e o `InMemoryMetricsCollector` não foram
-  testados sob volume (milhares de agentes distintos, memória do `Map`/objeto crescendo
-  sem limite — ambos não têm eviction/TTL hoje, o que é um problema real de memória em
-  produção de longa duração).
-- **Fuzzing dos parsers**: `parseAcceptCapabilities`, `parseSignatureInputHeader`,
-  `parseSignatureHeader` fazem parsing de entrada potencialmente hostil (vem de headers
-  HTTP de terceiros) e não foram testados com entradas adversariais além dos casos "header
-  ausente/malformado" da tabela acima.
+- ~~**Teste de carga**~~ — INVESTIGADO (2026-08-04, ICA-30): script
+  `gateway/scripts/load-test.mjs` (`npm run load-test` no pacote `gateway`) mede o heap do
+  `FixedWindowRateLimiter` e do `InMemoryMetricsCollector` sob volume. Resultado: o `Map`
+  do rate limiter e os objetos `requestsByAgent`/`errorsByAgent` do metrics collector
+  crescem em função da **cardinalidade de agentes distintos** (10.000 agentes → +2.36 MB,
+  ~247 B/agente) — sem eviction/TTL, mas limitado pelo número de agentes únicos já vistos.
+  Já o array `InMemoryMetricsCollector.latencies` cresce **sem limite por requisição**,
+  independente de agentes distintos (1.000.000 requisições de um único agente → +8.98 MB,
+  ~9.4 B/requisição, nunca truncado) — isso É um vazamento de memória real sob volume
+  sustentado em produção de longa duração. Follow-up de implementação em ICA-33.
+- ~~**Fuzzing dos parsers**~~ — rastreado em ICA-31.
 
 ## 6. Checklist manual (Dashboard e exploratório)
 

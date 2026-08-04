@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test dist/**/*.test.js"
+    "test": "node --test dist/**/*.test.js",
+    "load-test": "node --expose-gc scripts/load-test.mjs"
   },
   "dependencies": {
     "@herald/sdk": "file:../sdk",
