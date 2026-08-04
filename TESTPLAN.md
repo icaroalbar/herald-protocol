@@ -166,7 +166,17 @@ Express, que é justamente o que o nível e2e existe para cobrir.
   sustentado em produção de longa duração. **Corrigido em ICA-33 (2026-08-04)**: `recordLatency` passou a usar soma+contagem
   incremental em vez de array — memória O(1), média continua exata (não é aproximação),
   confirmado reexecutando o script de carga.
-- ~~**Fuzzing dos parsers**~~ — rastreado em ICA-31.
+- ~~**Fuzzing dos parsers**~~ — RESOLVIDO (2026-08-04, ICA-31): suíte determinística
+  (mulberry32) em `sdk/src/fuzz.test.ts` cobre `identifyAgent`, `parseAcceptCapabilities`,
+  `parsePaymentSignatureHeader`, `parseSignatureInputHeader` e `parseSignatureHeader` — ~3000
+  entradas aleatórias (ASCII, controle, unicode, delimitadores da gramática) mais padrões
+  adversariais explícitos (delimitador repetido, aspas/parênteses desbalanceados) por parser,
+  com teto de 100ms/chamada como canário de backtracking patológico de regex. Resultado:
+  nenhuma exceção não tratada, nenhuma chamada perto do teto (todas sub-milissegundo).
+  `AGENT_ID_PATTERN` e `SIG_PARAMS_PATTERN` também testados manualmente com entradas de até
+  400 KB sem sinal de ReDoS (crescimento linear, não exponencial). Tamanho de header em si já
+  é limitado pelo servidor HTTP (`--max-http-header-size` do Node, default 16 KiB) antes de
+  chegar nos parsers.
 
 ## 6. Checklist manual (Dashboard e exploratório)
 
