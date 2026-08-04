@@ -178,10 +178,27 @@ export function signRequest(options: SignRequestOptions): SignedHeaders {
   };
 }
 
+/** Contexto adicional repassado a `resolvePublicKey`, além do keyid (RFC-0002). */
+export interface ResolvePublicKeyContext {
+  /** Herald-Agent-Id declarado na requisição, se presente (RFC-0001 §4.1). */
+  agentId: string | null;
+  /** Headers completos da requisição, para resolvers que precisam de headers adicionais (ex: Herald-Agent-Keys-Url). */
+  headers: RequestLike["headers"];
+}
+
 export interface VerifyRequestSignatureOptions {
   request: RequestLike;
-  /** Resolve a chave pública (PEM, formato SPKI) a partir do keyid declarado na assinatura. */
-  resolvePublicKey: (keyId: string) => string | null | undefined | Promise<string | null | undefined>;
+  /**
+   * Resolve a chave pública (PEM, formato SPKI) a partir do keyid declarado na assinatura.
+   * O segundo parâmetro (`context`) é opcional de usar — resolvers estáticos (ex: um Map
+   * pré-configurado) podem ignorá-lo; resolvers de descoberta dinâmica (ver
+   * `createAgentKeyResolver` em `agent-keys.ts`, RFC-0002) usam `context.agentId` e
+   * `context.headers` para buscar e validar o documento de chaves do agente.
+   */
+  resolvePublicKey: (
+    keyId: string,
+    context: ResolvePublicKeyContext
+  ) => string | null | undefined | Promise<string | null | undefined>;
   /** Idade máxima aceita para `created`, em segundos (default 300 = 5 min). */
   maxAgeSeconds?: number;
 }
@@ -219,7 +236,11 @@ export async function verifyRequestSignature(
     return { valid: false, reason: "assinatura expirada (passou de expires)", keyId: params.keyId };
   }
 
-  const publicKeyPem = await options.resolvePublicKey(params.keyId);
+  const declaredAgentId = getHeaderValue(options.request.headers, "herald-agent-id") ?? null;
+  const publicKeyPem = await options.resolvePublicKey(params.keyId, {
+    agentId: declaredAgentId,
+    headers: options.request.headers,
+  });
   if (!publicKeyPem) {
     return { valid: false, reason: `chave publica desconhecida para keyid="${params.keyId}"`, keyId: params.keyId };
   }

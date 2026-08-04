@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://herald-protocol.org/schemas/herald-agent-keys.schema.json",
+  "title": "Herald Protocol Agent Keys Document",
+  "description": "Schema do documento publicado por um provedor de agente, apontado pelo header Herald-Agent-Keys-Url, conforme RFC-0002.",
+  "type": "object",
+  "required": ["herald_version", "agent_id", "signing_keys"],
+  "additionalProperties": false,
+  "properties": {
+    "herald_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Versão do protocolo suportada, formato MAJOR.MINOR.",
+      "examples": ["1.0"]
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Herald-Agent-Id ao qual este documento se refere. Uma origem verificando uma assinatura MUST conferir que este valor bate com o Herald-Agent-Id declarado na requisição antes de confiar em qualquer chave listada aqui."
+    },
+    "signing_keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/signingKey" }
+    }
+  },
+  "$defs": {
+    "signingKey": {
+      "type": "object",
+      "required": ["key_id", "alg", "public_key_pem", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "key_id": {
+          "type": "string",
+          "description": "Identificador da chave, correspondente ao parâmetro keyid de Signature-Input."
+        },
+        "alg": {
+          "type": "string",
+          "enum": ["ed25519", "ecdsa-p256-sha256"],
+          "description": "Algoritmo de assinatura, conforme SIGNATURES.md §2."
+        },
+        "public_key_pem": {
+          "type": "string",
+          "description": "Chave pública em formato PEM (SPKI), como retornado por generateSigningKeyPair()."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "revoked"],
+          "description": "Chaves 'revoked' MUST ser tratadas como inexistentes para verificação de novas assinaturas."
+        },
+        "not_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601. Ausente = sem limite inferior de validade."
+        },
+        "not_after": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO-8601 ou null. Ausente/null = sem limite superior de validade."
+        }
+      }
+    }
+  }
+}

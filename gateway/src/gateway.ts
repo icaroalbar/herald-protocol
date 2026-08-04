@@ -18,14 +18,23 @@ import {
   type PolicyEngineConfig,
   type PaymentRequirements,
   type PaymentVerifier,
+  type ResolvePublicKeyContext,
 } from "@herald/sdk";
 import { FormatterRegistry } from "./formatters.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { setHeraldContext } from "./context.js";
 
 export interface SignatureVerificationConfig {
-  /** Resolve a chave pública (PEM) a partir do keyid declarado em Signature-Input. */
-  resolvePublicKey: (keyId: string) => string | null | undefined | Promise<string | null | undefined>;
+  /**
+   * Resolve a chave pública (PEM) a partir do keyid declarado em Signature-Input. Um
+   * resolver estático (ex: `(keyId) => meuMap.get(keyId)`) pode ignorar o segundo
+   * parâmetro; para descoberta dinâmica via RFC-0002, plugue diretamente o retorno de
+   * `createAgentKeyResolver()` (`@herald/sdk`, módulo `agent-keys.ts`).
+   */
+  resolvePublicKey: (
+    keyId: string,
+    context: ResolvePublicKeyContext
+  ) => string | null | undefined | Promise<string | null | undefined>;
   /** default: 300 (5 minutos) */
   maxAgeSeconds?: number;
 }

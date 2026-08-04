@@ -93,10 +93,15 @@ criptográfica em si.
   exemplo, apenas uma parte estruturada de um header multi-valor.
 - Sem `Accept-Signature` (negociação de quais algoritmos/componentes a origem aceita) —
   isso precisa ser combinado fora de banda hoje.
-- Sem registro/descoberta de chave pública padronizado — `resolvePublicKey` é
-  implementado por quem opera a origem (pode ser um Map em memória, uma tabela, um
-  serviço remoto). Um mecanismo de descoberta padronizado (tipo DKIM para email) é um dos
-  itens registrados em ICA-27 para revisão futura.
+- ~~Sem registro/descoberta de chave pública padronizado~~ — RESOLVIDO (2026-08-04,
+  ICA-32): [RFC-0002](./RFC-0002-descoberta-chave-publica.md) (Draft) define um
+  mecanismo opcional, aditivo, via header `Herald-Agent-Keys-Url` — implementação de
+  referência em `createAgentKeyResolver()` (`@herald/sdk`, módulo `agent-keys.ts`).
+  `resolvePublicKey` continua podendo ser um Map/tabela/serviço estático quando a
+  descoberta dinâmica não é necessária; os dois modos coexistem (`resolvePublicKey`
+  agora recebe um segundo parâmetro de contexto opcional de usar — ver
+  `ResolvePublicKeyContext`). RFC-0002 ainda está em Draft — ver "Perguntas em aberto"
+  lá antes de tratar o mecanismo como definitivo.
 
 ## 9. Referências
 
