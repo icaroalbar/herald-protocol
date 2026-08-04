@@ -1,0 +1,136 @@
+openapi: 3.0.3
+info:
+  title: Herald Protocol Gateway
+  version: "1.0"
+  description: |
+    API HTTP exposta por `@herald/gateway` (implementação de referência do Herald
+    Protocol). O Gateway é um middleware Express — ele expõe **duas rotas fixas**
+    (documentadas abaixo) e, além disso, um middleware de pipeline que roda em
+    **qualquer outra rota** da aplicação hospedeira, modificando request/response
+    conforme a política configurada. Esse pipeline não é modelável como um path table
+    fixo do OpenAPI (aplica-se a rotas que a própria aplicação define) — está descrito
+    na seção "Pipeline" abaixo e, de forma normativa completa, em `../HEADERS.md` e
+    `../RFC-0001.md`.
+  license:
+    name: MIT
+    url: https://github.com/icaroalbar/herald-protocol/blob/main/LICENSE
+externalDocs:
+  description: RFC-0001 (especificação normativa completa)
+  url: https://github.com/icaroalbar/herald-protocol/blob/main/RFC-0001.md
+
+paths:
+  /.well-known/herald:
+    get:
+      summary: Documento de descoberta
+      description: |
+        Retorna as capacidades, políticas e endpoints da origem (RFC-0001 §6). Path
+        configurável via `HeraldGatewayConfig.wellKnownPath` (default mostrado aqui).
+      operationId: getDiscoveryDocument
+      responses:
+        "200":
+          description: Documento de descoberta.
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "max-age=3600" }
+          content:
+            application/json:
+              schema:
+                $ref: "../well-known-herald.schema.json"
+
+  /metrics:
+    get:
+      summary: Snapshot de métricas agregadas
+      description: |
+        Retorna o snapshot atual do `MetricsCollector` configurado (RFC-0001 §9). Path
+        configurável via `HeraldGatewayConfig.metricsPath` (default mostrado aqui).
+        `501` quando o `MetricsCollector` configurado não é o
+        `InMemoryMetricsCollector` de referência (não implementa `snapshot()`) — um
+        adaptador customizado (ex: `prom-client`) tipicamente expõe métricas por outro
+        mecanismo (scrape endpoint próprio), não por este path.
+      operationId: getMetricsSnapshot
+      responses:
+        "200":
+          description: Snapshot de métricas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - requestsByAgent
+                  - decisionsByResult
+                  - formatsServed
+                  - errorsByAgent
+                  - averageLatencyMs
+                  - sampleCount
+                properties:
+                  requestsByAgent:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: Contagem de requisições por chave de agente (`agentId` ou `unknown:<agentType>`).
+                  decisionsByResult:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: Contagem de decisões do Policy Engine por resultado (allow/deny/ask/not-applicable).
+                  formatsServed:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: Contagem de formatos servidos após negociação.
+                  errorsByAgent:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: Contagem de respostas >=400 por `"<agentId>:<statusCode>"`.
+                  averageLatencyMs:
+                    type: number
+                    description: Média incremental de latência (0 quando não há amostras).
+                  sampleCount:
+                    type: integer
+                    description: Número de requisições que contribuíram para averageLatencyMs.
+        "501":
+          description: MetricsCollector configurado não implementa snapshot().
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+
+x-pipeline-description: |
+  As rotas abaixo NÃO são paths fixos do Gateway — são o comportamento do middleware de
+  pipeline aplicado a QUALQUER rota da aplicação hospedeira que não seja uma das duas
+  acima. Documentado aqui como referência de headers/status, não como path table.
+
+  ## Headers de requisição lidos
+
+  | Header | Uso |
+  |---|---|
+  | `Herald-Agent-Id`, `Herald-Agent-Type` | Identificação declarada do agente (RFC-0001 §4.1) |
+  | `User-Agent` | Fallback de identificação por padrão conhecido, se os headers Herald acima ausentes/inválidos |
+  | `Signature-Input`, `Signature` | Verificação criptográfica de identidade (RFC 9421 / SIGNATURES.md), só processados se `signatureVerification` configurado |
+  | `Herald-Agent-Keys-Url` | Descoberta de chave pública do agente (RFC-0002), lido dentro de um `resolvePublicKey` que use `createAgentKeyResolver()` |
+  | `Herald-Accept-Capabilities` | Negociação de formato de resposta (RFC-0001 §5) |
+  | `Payment-Signature` | Reenvio de pagamento no fluxo x402 do intent `ask` (MONETIZATION.md), só processado se `monetization` configurado |
+  | `Host` | Usado como `@authority` na verificação de assinatura |
+
+  ## Headers de resposta escritos
+
+  | Header | Quando |
+  |---|---|
+  | `X-Herald-Debug-Agent-Verified` | Sempre que o agente é identificado (`"true"`/`"false"`) — não normativo, só debug |
+  | `Herald-Policy-Decision` | Sempre que o agente é identificado, conforme RFC-0001 §8.4 |
+  | `Vary: Herald-Agent-Id, Herald-Accept-Capabilities` | Sempre que o agente é identificado |
+  | `Payment-Required` | Intent `ask` com `monetization` configurado, sem pagamento válido ainda |
+  | `Payment-Response` | Intent `ask` com `monetization` configurado, após tentativa de verificação de pagamento |
+  | `Retry-After` | Resposta `429` (segundos até a janela de rate limit liberar) |
+  | `Herald-Content-Format` | Quando a negociação de formato encontra interseção (`matched=true`) |
+
+  ## Status codes possíveis (além do 200 normal da aplicação)
+
+  | Status | Quando |
+  |---|---|
+  | `403` | Decisão de política `deny` |
+  | `402` | Decisão de política `ask` (com ou sem `monetization` configurado) |
+  | `429` | Rate limit da regra de política excedido |
+
+  Clientes sem nenhuma identificação Herald (`agent.source === "none"`) passam pelo
+  pipeline sem nenhum header/status acima — comportamento idêntico a não ter o Gateway
+  instalado (RFC-0001 §3, princípio de compatibilidade retroativa).
