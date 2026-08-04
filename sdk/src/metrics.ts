@@ -14,7 +14,8 @@ export class InMemoryMetricsCollector implements MetricsCollector {
   private decisionsByResult: Counter = {};
   private formatsServed: Counter = {};
   private errorsByAgent: Counter = {};
-  private latencies: number[] = [];
+  private latencySum = 0;
+  private latencyCount = 0;
 
   private key(agent: AgentContext): string {
     return agent.agentId ?? `unknown:${agent.agentType}`;
@@ -39,19 +40,19 @@ export class InMemoryMetricsCollector implements MetricsCollector {
   }
 
   recordLatency(_agent: AgentContext, ms: number): void {
-    this.latencies.push(ms);
+    this.latencySum += ms;
+    this.latencyCount += 1;
   }
 
   snapshot() {
-    const avgLatency =
-      this.latencies.length > 0 ? this.latencies.reduce((a, b) => a + b, 0) / this.latencies.length : 0;
+    const avgLatency = this.latencyCount > 0 ? this.latencySum / this.latencyCount : 0;
     return {
       requestsByAgent: { ...this.requestsByAgent },
       decisionsByResult: { ...this.decisionsByResult },
       formatsServed: { ...this.formatsServed },
       errorsByAgent: { ...this.errorsByAgent },
       averageLatencyMs: avgLatency,
-      sampleCount: this.latencies.length,
+      sampleCount: this.latencyCount,
     };
   }
 }

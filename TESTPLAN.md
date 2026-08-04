@@ -163,7 +163,9 @@ Express, que é justamente o que o nível e2e existe para cobrir.
   Já o array `InMemoryMetricsCollector.latencies` cresce **sem limite por requisição**,
   independente de agentes distintos (1.000.000 requisições de um único agente → +8.98 MB,
   ~9.4 B/requisição, nunca truncado) — isso É um vazamento de memória real sob volume
-  sustentado em produção de longa duração. Follow-up de implementação em ICA-33.
+  sustentado em produção de longa duração. **Corrigido em ICA-33 (2026-08-04)**: `recordLatency` passou a usar soma+contagem
+  incremental em vez de array — memória O(1), média continua exata (não é aproximação),
+  confirmado reexecutando o script de carga.
 - ~~**Fuzzing dos parsers**~~ — rastreado em ICA-31.
 
 ## 6. Checklist manual (Dashboard e exploratório)

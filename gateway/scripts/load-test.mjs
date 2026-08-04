@@ -49,8 +49,8 @@ console.log(`  heap antes: ${fmt(before1)} | depois: ${fmt(after1)} | delta: ${f
 console.log(`  bytes/agente (rate limiter + metrics combinados): ${(((after1 - before1) * 1024 * 1024) / AGENTS).toFixed(1)} B\n`);
 
 // --- Fase 2: 1 agente único, muitas requisições ---
-// Testa o array `latencies` do metrics collector, que é empurrado a cada
-// recordLatency() sem nenhum limite — cresce por REQUISIÇÃO, não por agente distinto.
+// Testa recordLatency() sob volume sustentado de um único agente — deve ter
+// memória O(1) (soma + contagem incremental), não crescer por REQUISIÇÃO (ICA-33).
 const singleAgent = { agentId: "agent-fixo", agentType: "assistant", source: "declared" };
 const before2 = heapMB();
 for (let i = 0; i < SINGLE_AGENT_REQUESTS; i++) {
@@ -62,14 +62,12 @@ const after2 = heapMB();
 console.log(`Fase 2 — 1 agente fixo, ${SINGLE_AGENT_REQUESTS.toLocaleString("pt-BR")} requisições`);
 console.log(`  heap antes: ${fmt(before2)} | depois: ${fmt(after2)} | delta: ${fmt(after2 - before2)}`);
 console.log(`  bytes/requisição: ${(((after2 - before2) * 1024 * 1024) / SINGLE_AGENT_REQUESTS).toFixed(2)} B`);
-console.log(`  snapshot.sampleCount: ${metrics.snapshot().sampleCount.toLocaleString("pt-BR")} (== requisições da fase 2, array nunca truncado)\n`);
+console.log(`  snapshot.sampleCount: ${metrics.snapshot().sampleCount.toLocaleString("pt-BR")} (contagem incremental, sem array — ICA-33)\n`);
 
 console.log("Conclusão:");
 console.log("  - Fase 1 confirma crescimento do Map do rate limiter e dos objetos do metrics");
 console.log("    collector proporcional à CARDINALIDADE de agentes distintos — sem eviction/TTL,");
 console.log("    um agente que some não libera memória, mas o crescimento é limitado pelo número");
 console.log("    de agentes únicos já vistos (tipicamente muito menor que o volume de requisições).");
-console.log("  - Fase 2 confirma que `InMemoryMetricsCollector.latencies` cresce SEM LIMITE, um");
-console.log("    elemento por requisição, independente de quantos agentes distintos existem — em");
-console.log("    produção sob volume sustentado isso é crescimento de memória ilimitado real.");
-console.log("    Ver issue de follow-up.");
+console.log("  - Fase 2: recordLatency() usa soma+contagem incremental (ICA-33), não array — delta");
+console.log("    de heap para 1M requisições de um agente fixo deve ficar próximo de zero.");
