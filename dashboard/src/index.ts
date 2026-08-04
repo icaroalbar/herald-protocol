@@ -1,6 +1,7 @@
 import { createDashboardApp } from "./server.js";
 
-const { app, config } = createDashboardApp();
+const { app, config, startHistoryPolling } = createDashboardApp();
+startHistoryPolling();
 
 app.listen(config.port, () => {
   const names = config.gateways.map((g) => g.name).join(", ");

@@ -7,6 +7,7 @@ export interface DashboardConfig {
   port: number;
   gateways: GatewaySource[];
   pollIntervalMs: number;
+  historySize: number;
 }
 
 /**
@@ -15,6 +16,7 @@ export interface DashboardConfig {
  *   HERALD_GATEWAYS          lista "nome=url,nome=url" de Gateways a consultar
  *                             (default: um único Gateway local em http://localhost:3000/metrics)
  *   HERALD_POLL_INTERVAL_MS   intervalo de atualização do frontend, em ms (default 5000)
+ *   HERALD_HISTORY_SIZE       amostras de histórico mantidas por Gateway (default 60)
  */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): DashboardConfig {
   const gatewaysEnv = env.HERALD_GATEWAYS;
@@ -34,5 +36,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DashboardConfi
     port: Number(env.PORT ?? 4000),
     gateways,
     pollIntervalMs: Number(env.HERALD_POLL_INTERVAL_MS ?? 5000),
+    historySize: Number(env.HERALD_HISTORY_SIZE ?? 60),
   };
 }

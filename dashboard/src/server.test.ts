@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
-import { createDashboardApp } from "./server.js";
+import { createDashboardApp, pollOnce } from "./server.js";
+import { MetricsHistoryStore } from "./history.js";
 
 /**
  * fetchGatewayMetrics() usa o `fetch` global (nativo do Node >=18) — mockamos
@@ -127,4 +128,98 @@ test("serve os arquivos estaticos do public/ (index.html na raiz)", async () => 
   const res = await request(app).get("/");
   assert.equal(res.status, 200);
   assert.match(res.headers["content-type"], /html/);
+});
+
+test("pollOnce grava uma amostra no MetricsHistoryStore por Gateway", async () => {
+  const restore = mockFetch(async (url) => {
+    if (url === "http://gw-a/metrics") return { ok: true, json: async () => snapshotOf("bot-a/1.0") };
+    throw new Error(`URL inesperada: ${url}`);
+  });
+
+  try {
+    const config = { port: 0, pollIntervalMs: 1000, historySize: 60, gateways: [{ name: "a", metricsUrl: "http://gw-a/metrics" }] };
+    const historyStore = new MetricsHistoryStore(config.historySize);
+
+    await pollOnce(config, historyStore);
+    await pollOnce(config, historyStore);
+
+    const snap = historyStore.snapshot();
+    assert.equal(snap.a.length, 2);
+    assert.equal(snap.a[0].data?.requestsByAgent["bot-a/1.0"], 3);
+    assert.equal(snap.a[0].error, undefined);
+  } finally {
+    restore();
+  }
+});
+
+test("pollOnce grava error (data:null) quando o Gateway esta fora do ar", async () => {
+  const restore = mockFetch(async () => {
+    throw new Error("fetch failed: ECONNREFUSED");
+  });
+
+  try {
+    const config = { port: 0, pollIntervalMs: 1000, historySize: 60, gateways: [{ name: "down", metricsUrl: "http://gw-down/metrics" }] };
+    const historyStore = new MetricsHistoryStore(config.historySize);
+
+    await pollOnce(config, historyStore);
+
+    const entry = historyStore.snapshot().down[0];
+    assert.equal(entry.data, null);
+    assert.match(entry.error ?? "", /ECONNREFUSED/);
+  } finally {
+    restore();
+  }
+});
+
+test("MetricsHistoryStore descarta as amostras mais antigas ao exceder historySize", () => {
+  const store = new MetricsHistoryStore(3);
+  for (let i = 0; i < 5; i++) {
+    store.record("a", { fetchedAt: `t${i}`, data: null, error: `sample-${i}` });
+  }
+  const entries = store.snapshot().a;
+  assert.equal(entries.length, 3);
+  assert.deepEqual(
+    entries.map((e) => e.error),
+    ["sample-2", "sample-3", "sample-4"]
+  );
+});
+
+test("GET /api/metrics/history reflete o que foi gravado no historyStore", async () => {
+  const { app, historyStore } = createDashboardApp({ gateways: [] });
+  historyStore.record("gw", { fetchedAt: "2026-01-01T00:00:00.000Z", data: snapshotOf("bot/1.0") });
+
+  const res = await request(app).get("/api/metrics/history");
+  assert.equal(res.status, 200);
+  assert.equal(res.body.gateways.gw.length, 1);
+  assert.equal(res.body.gateways.gw[0].data.requestsByAgent["bot/1.0"], 3);
+});
+
+test("startHistoryPolling/stopHistoryPolling: poller real grava amostras e para quando pedido", async () => {
+  let callCount = 0;
+  const restore = mockFetch(async (url) => {
+    callCount += 1;
+    if (url === "http://gw-a/metrics") return { ok: true, json: async () => snapshotOf("bot-a/1.0") };
+    throw new Error(`URL inesperada: ${url}`);
+  });
+
+  try {
+    const { historyStore, startHistoryPolling, stopHistoryPolling } = createDashboardApp({
+      gateways: [{ name: "a", metricsUrl: "http://gw-a/metrics" }],
+      pollIntervalMs: 15,
+    });
+
+    startHistoryPolling();
+    startHistoryPolling(); // idempotente — nao deve duplicar o interval
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    stopHistoryPolling();
+
+    const countAfterStop = historyStore.snapshot().a.length;
+    assert.ok(countAfterStop >= 2, `esperava >=2 amostras, teve ${countAfterStop}`);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const countAfterWait = historyStore.snapshot().a.length;
+    assert.equal(countAfterWait, countAfterStop, "nao deveria crescer mais apos stopHistoryPolling()");
+  } finally {
+    restore();
+  }
 });
