@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, type DashboardConfig } from "./config.js";
 import { MetricsHistoryStore, type MetricsSnapshot } from "./history.js";
+import { OutpostStore } from "./outposts.js";
+import { createOutpostRouter } from "./outpost-routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +41,7 @@ export interface DashboardApp {
   app: Express;
   config: DashboardConfig;
   historyStore: MetricsHistoryStore;
+  outpostStore: OutpostStore;
   /** Inicia o poller em background que alimenta o histórico (idempotente). Não é chamado
    * automaticamente — quem sobe o processo real (index.ts) chama explicitamente; testes
    * que não precisam de histórico não pagam o custo de um setInterval por teste. */
@@ -52,8 +55,10 @@ export function createDashboardApp(configOverride?: Partial<DashboardConfig>): D
   const config = { ...loadConfig(), ...configOverride };
   const app = express();
   const historyStore = new MetricsHistoryStore(config.historySize);
+  const outpostStore = new OutpostStore(config.outpostsFilePath);
 
   app.use(express.static(path.join(__dirname, "..", "public")));
+  app.use(createOutpostRouter(outpostStore, historyStore));
 
   // Agrega /metrics de um ou mais Gateways no servidor — evita problemas de CORS no
   // navegador e permite o Dashboard consultar múltiplas origens (ARCHITECTURE.md §2.1).
@@ -100,5 +105,5 @@ export function createDashboardApp(configOverride?: Partial<DashboardConfig>): D
     }
   }
 
-  return { app, config, historyStore, startHistoryPolling, stopHistoryPolling };
+  return { app, config, historyStore, outpostStore, startHistoryPolling, stopHistoryPolling };
 }

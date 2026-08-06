@@ -1,8 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
-import { createDashboardApp, pollOnce } from "./server.js";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createDashboardApp, pollOnce, type DashboardApp } from "./server.js";
 import { MetricsHistoryStore } from "./history.js";
+import { type DashboardConfig } from "./config.js";
+
+/**
+ * testApp() agora persiste Outposts em disco (OutpostStore) — sem isso, todo
+ * teste leria/escreveria dashboard/data/outposts.json de verdade e se contaminaria entre
+ * execuções. Cada teste recebe um arquivo temporário isolado.
+ */
+function testApp(overrides: Partial<DashboardConfig> = {}): DashboardApp {
+  const dir = mkdtempSync(join(tmpdir(), "herald-dashboard-test-"));
+  return createDashboardApp({ outpostsFilePath: join(dir, "outposts.json"), ...overrides });
+}
 
 /**
  * fetchGatewayMetrics() usa o `fetch` global (nativo do Node >=18) — mockamos
@@ -35,7 +49,7 @@ test("agrega metricas de multiplos Gateways com sucesso", async () => {
   });
 
   try {
-    const { app } = createDashboardApp({
+    const { app } = testApp({
       gateways: [
         { name: "a", metricsUrl: "http://gw-a/metrics" },
         { name: "b", metricsUrl: "http://gw-b/metrics" },
@@ -65,7 +79,7 @@ test("um Gateway fora do ar (fetch rejeita) nao derruba a agregacao dos demais",
   });
 
   try {
-    const { app } = createDashboardApp({
+    const { app } = testApp({
       gateways: [
         { name: "ok", metricsUrl: "http://gw-ok/metrics" },
         { name: "down", metricsUrl: "http://gw-down/metrics" },
@@ -90,7 +104,7 @@ test("Gateway respondendo com status HTTP de erro vira ok:false com o status no 
   const restore = mockFetch(async () => ({ ok: false, status: 503, json: async () => ({}) }));
 
   try {
-    const { app } = createDashboardApp({ gateways: [{ name: "flaky", metricsUrl: "http://gw-flaky/metrics" }] });
+    const { app } = testApp({ gateways: [{ name: "flaky", metricsUrl: "http://gw-flaky/metrics" }] });
     const res = await request(app).get("/api/metrics");
     assert.equal(res.status, 200);
     assert.equal(res.body.gateways[0].ok, false);
@@ -104,7 +118,7 @@ test("resposta inclui fetchedAt e pollIntervalMs do config", async () => {
   const restore = mockFetch(async () => ({ ok: true, json: async () => snapshotOf("bot/1.0") }));
 
   try {
-    const { app } = createDashboardApp({
+    const { app } = testApp({
       gateways: [{ name: "a", metricsUrl: "http://gw-a/metrics" }],
       pollIntervalMs: 1234,
     });
@@ -117,14 +131,14 @@ test("resposta inclui fetchedAt e pollIntervalMs do config", async () => {
 });
 
 test("sem Gateways configurados, /api/metrics retorna lista vazia sem erro", async () => {
-  const { app } = createDashboardApp({ gateways: [] });
+  const { app } = testApp({ gateways: [] });
   const res = await request(app).get("/api/metrics");
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.gateways, []);
 });
 
 test("serve os arquivos estaticos do public/ (index.html na raiz)", async () => {
-  const { app } = createDashboardApp({ gateways: [] });
+  const { app } = testApp({ gateways: [] });
   const res = await request(app).get("/");
   assert.equal(res.status, 200);
   assert.match(res.headers["content-type"], /html/);
@@ -137,7 +151,7 @@ test("pollOnce grava uma amostra no MetricsHistoryStore por Gateway", async () =
   });
 
   try {
-    const config = { port: 0, pollIntervalMs: 1000, historySize: 60, gateways: [{ name: "a", metricsUrl: "http://gw-a/metrics" }] };
+    const config = { port: 0, pollIntervalMs: 1000, historySize: 60, outpostsFilePath: "", gateways: [{ name: "a", metricsUrl: "http://gw-a/metrics" }] };
     const historyStore = new MetricsHistoryStore(config.historySize);
 
     await pollOnce(config, historyStore);
@@ -158,7 +172,7 @@ test("pollOnce grava error (data:null) quando o Gateway esta fora do ar", async 
   });
 
   try {
-    const config = { port: 0, pollIntervalMs: 1000, historySize: 60, gateways: [{ name: "down", metricsUrl: "http://gw-down/metrics" }] };
+    const config = { port: 0, pollIntervalMs: 1000, historySize: 60, outpostsFilePath: "", gateways: [{ name: "down", metricsUrl: "http://gw-down/metrics" }] };
     const historyStore = new MetricsHistoryStore(config.historySize);
 
     await pollOnce(config, historyStore);
@@ -185,7 +199,7 @@ test("MetricsHistoryStore descarta as amostras mais antigas ao exceder historySi
 });
 
 test("GET /api/metrics/history reflete o que foi gravado no historyStore", async () => {
-  const { app, historyStore } = createDashboardApp({ gateways: [] });
+  const { app, historyStore } = testApp({ gateways: [] });
   historyStore.record("gw", { fetchedAt: "2026-01-01T00:00:00.000Z", data: snapshotOf("bot/1.0") });
 
   const res = await request(app).get("/api/metrics/history");
@@ -203,7 +217,7 @@ test("startHistoryPolling/stopHistoryPolling: poller real grava amostras e para 
   });
 
   try {
-    const { historyStore, startHistoryPolling, stopHistoryPolling } = createDashboardApp({
+    const { historyStore, startHistoryPolling, stopHistoryPolling } = testApp({
       gateways: [{ name: "a", metricsUrl: "http://gw-a/metrics" }],
       pollIntervalMs: 15,
     });

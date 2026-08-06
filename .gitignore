@@ -13,3 +13,7 @@ graphify-out/
 # saida gerada (TypeDoc, sync do site de docs) — regenerada a cada build
 docs-generated/
 docs/src/
+
+# persistencia local do Dashboard (Outposts — ICA-34). Real, nao regenerada a partir de
+# nada — mas nao versionada (dado de instalacao de cada operador, nao do repositorio).
+dashboard/data/
