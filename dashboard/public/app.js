@@ -32,6 +32,16 @@ function filterCounter(counter, filterText) {
   return Object.fromEntries(Object.entries(counter || {}).filter(([key]) => key.toLowerCase().includes(needle)));
 }
 
+/** "unknown:unknown" é a chave que o Gateway usa pra requisições sem nenhuma
+ * identificação Herald (agentId null + agentType "unknown") — na prática, tráfego
+ * humano/não identificado. Único caminho que produz essa combinação exata (ver
+ * gateway.ts), então é seguro relabelar sem risco de esconder um agente de verdade. */
+function relabelAgentKeys(counter) {
+  return Object.fromEntries(
+    Object.entries(counter || {}).map(([key, value]) => [key === "unknown:unknown" ? "Humano / não identificado" : key, value])
+  );
+}
+
 function renderGateway(gw, filterText, historyByGateway) {
   const section = document.createElement("section");
   section.className = "gateway-card";
@@ -43,7 +53,7 @@ function renderGateway(gw, filterText, historyByGateway) {
   }
 
   const d = gw.data;
-  const requestsByAgent = filterCounter(d.requestsByAgent, filterText);
+  const requestsByAgent = relabelAgentKeys(filterCounter(d.requestsByAgent, filterText));
   const errorsByAgent = filterCounter(d.errorsByAgent, filterText);
 
   const history = (historyByGateway && historyByGateway[gw.name]) || [];

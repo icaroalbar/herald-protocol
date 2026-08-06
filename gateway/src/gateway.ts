@@ -132,9 +132,14 @@ export function createHeraldGateway(config: HeraldGatewayConfig): HeraldGateway 
         headers: req.headers as Record<string, string | string[] | undefined>,
       });
 
-      // Cliente sem qualquer identificação Herald: comportamento padrão inalterado,
-      // sem métricas por agente (RFC-0001 §9 é sobre consumo de agentes, não tráfego geral).
+      // Cliente sem qualquer identificação Herald (provável navegador humano): resposta
+      // continua inalterada (sem headers Herald-*, sem política aplicada) — RFC-0001 §3,
+      // compatibilidade retroativa. Ainda assim conta na métrica de requisições, sob a
+      // chave "unknown:unknown" (agentId null + agentType "unknown" — único caminho que
+      // produz essa combinação, não colide com nenhum agente identificado), pra dar
+      // visibilidade de agente-vs-humano no total de tráfego.
       if (agent.source === "none") {
+        metrics.incrementRequest(agent);
         return next();
       }
 

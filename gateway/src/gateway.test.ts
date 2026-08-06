@@ -54,6 +54,14 @@ test("requisição sem headers Herald passa direto (source none): sem headers He
   assert.equal(res.headers["x-herald-debug-agent-verified"], undefined);
 });
 
+test("requisição sem headers Herald ainda conta em /metrics, sob a chave unknown:unknown", async () => {
+  const { app } = buildApp({ discovery: baseDiscovery, policy: { default: { read: "allow" } } });
+  await request(app).get("/artigos/x");
+  await request(app).get("/artigos/y");
+  const res = await request(app).get("/metrics");
+  assert.equal(res.body.requestsByAgent["unknown:unknown"], 2);
+});
+
 test("agente identificado com policy allow: define Herald-Policy-Decision/Vary e chama next()", async () => {
   const { app } = buildApp({ discovery: baseDiscovery, policy: { default: { read: "allow" } } });
   const res = await request(app).get("/artigos/x").set("Herald-Agent-Id", "test-bot/1.0").set("Herald-Agent-Type", "crawler");
