@@ -1,10 +1,62 @@
 # Começando
 
-Duas formas de adotar o Herald Protocol: usar `@herald/sdk` direto na sua aplicação, ou
-instalar `@herald/gateway` como middleware Express (recomendado — cobre o pipeline
-inteiro sem reescrever rotas).
+Três formas de adotar o Herald Protocol, da mais rápida pra mais manual: CLI (`@herald/cli`,
+cria uma identidade — "Outpost" — e configura o Gateway pra você), Gateway direto
+(`@herald/gateway`, middleware Express, cobre o pipeline inteiro sem reescrever rotas), ou
+SDK cru (`@herald/sdk`, só o que você precisar).
 
-## Via Gateway (recomendado)
+## Via CLI (mais rápido)
+
+> **Ainda não publicado no npm** — os comandos abaixo usam `node dist/bin.js` do
+> repositório clonado, não `npx @herald/cli`. Isso muda assim que o pacote for publicado.
+
+1. Suba o Dashboard (self-hosted) e crie um Outpost — a identidade da sua aplicação:
+
+   ```bash
+   cd sdk && npm install && npm run build
+   cd ../gateway && npm install && npm run build
+   cd ../dashboard && npm install && npm run build && npm start   # terminal 1
+
+   cd ../cli && npm install && npm run build
+   node dist/bin.js outpost create --dashboard-url http://localhost:4000 --name meu-app
+   ```
+
+   Guarde a `key` retornada — não pode ser recuperada depois de fechar o terminal.
+
+2. Na sua aplicação (já usando `@herald/sdk` + `@herald/gateway`), rode:
+
+   ```bash
+   node <caminho-do-repo>/cli/dist/bin.js init
+   ```
+
+   Informe a URL do Dashboard e a key. Isso grava (ou atualiza) `HERALD_DASHBOARD_URL` e
+   `HERALD_OUTPOST_KEY` no `.env` do diretório atual.
+
+3. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
+   `node --env-file=.env` exige **Node ≥20.6**, acima do `engines: >=18` declarado nos
+   pacotes; se estiver em Node 18/19, carregue as 2 variáveis manualmente):
+
+   ```ts
+   const gateway = createHeraldGateway({
+     discovery: { /* ... */ },
+     policy: { /* ... */ },
+     reporting: {
+       dashboardUrl: process.env.HERALD_DASHBOARD_URL!,
+       outpostKey: process.env.HERALD_OUTPOST_KEY!,
+     },
+   });
+   gateway.startReporting();
+   ```
+
+   As métricas aparecem em `GET /api/metrics/history` do Dashboard, sob a chave
+   `outpost:<id>` — sem precisar configurar `HERALD_GATEWAYS` manualmente.
+
+   Push funciona através de firewalls corporativos outbound-only (ao contrário do modelo
+   de polling abaixo, que exige que o Dashboard alcance sua aplicação); self-hosting
+   continua totalmente funcional sem nenhuma chamada a infraestrutura da Herald — o
+   Dashboard que gera e valida a Outpost key é o mesmo que você está rodando.
+
+## Via Gateway (configuração manual)
 
 ```bash
 cd sdk && npm install && npm run build
