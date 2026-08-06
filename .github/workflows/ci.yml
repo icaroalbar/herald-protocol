@@ -6,10 +6,12 @@ on:
   pull_request:
     branches: [main]
 
-# Builda e testa os 4 pacotes na ordem de dependência real (sdk -> gateway/dashboard -> poc).
+# Builda e testa os pacotes na ordem de dependência real (sdk -> gateway/dashboard -> poc).
 # Cada pacote usa dependências locais via "file:../<pacote>" (não é um monorepo com
 # workspaces npm) — por isso o build de um pacote precisa ter rodado antes do `npm install`
 # do próximo, senão ele copia um `dist/` desatualizado ou inexistente. Ver TESTPLAN.md §5.
+# cli/ é exceção: não depende de nenhum outro pacote via file: (roda dentro de uma
+# aplicação externa, não é consumido por nenhum pacote deste repo) — build/test independente.
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -37,6 +39,13 @@ jobs:
 
       - name: Dashboard — install, build, test
         working-directory: dashboard
+        run: |
+          npm install
+          npm run build
+          npm test
+
+      - name: CLI — install, build, test
+        working-directory: cli
         run: |
           npm install
           npm run build
