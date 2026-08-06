@@ -409,3 +409,74 @@ test("ask com monetization e Payment-Signature malformado: tratado como se nao h
   assert.ok(res.headers["payment-required"]);
   assert.equal(res.headers["payment-response"], undefined);
 });
+
+test("reporting: startReporting() empurra o snapshot pro Dashboard periodicamente, stopReporting() interrompe", async () => {
+  let callCount = 0;
+  let lastAuth = "";
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    callCount += 1;
+    lastAuth = (init?.headers as Record<string, string>)?.authorization ?? "";
+    return { ok: true } as unknown as globalThis.Response;
+  }) as unknown as typeof fetch;
+
+  const { gateway } = buildApp({
+    discovery: baseDiscovery,
+    policy: { default: { read: "allow" } },
+    reporting: { dashboardUrl: "http://dashboard.local", outpostKey: "hrld_op_test", intervalMs: 15, fetchImpl },
+  });
+
+  gateway.startReporting();
+  gateway.startReporting(); // idempotente
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  gateway.stopReporting();
+
+  const countAfterStop = callCount;
+  assert.ok(countAfterStop >= 2, `esperava >=2 chamadas, teve ${countAfterStop}`);
+  assert.equal(lastAuth, "Bearer hrld_op_test");
+
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(callCount, countAfterStop, "nao deveria crescer mais apos stopReporting()");
+});
+
+test("reporting: sem config.reporting, startReporting()/stopReporting() sao no-ops seguros (sem timer, sem fetch)", async () => {
+  let called = false;
+  const fetchImpl = (async () => {
+    called = true;
+    return { ok: true } as unknown as globalThis.Response;
+  }) as unknown as typeof fetch;
+
+  const { gateway } = buildApp({ discovery: baseDiscovery, policy: { default: { read: "allow" } } });
+
+  assert.doesNotThrow(() => gateway.startReporting());
+  assert.doesNotThrow(() => gateway.stopReporting());
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(called, false);
+  void fetchImpl; // referenciado só pra deixar claro que nao deveria ser chamado
+});
+
+test("reporting: MetricsCollector customizado (nao InMemoryMetricsCollector) + reporting configurado -> no-op seguro", async () => {
+  const customMetrics = {
+    incrementRequest: () => {},
+    recordPolicyDecision: () => {},
+    recordFormat: () => {},
+    recordError: () => {},
+    recordLatency: () => {},
+  };
+  let called = false;
+  const fetchImpl = (async () => {
+    called = true;
+    return { ok: true } as unknown as globalThis.Response;
+  }) as unknown as typeof fetch;
+
+  const { gateway } = buildApp({
+    discovery: baseDiscovery,
+    policy: { default: { read: "allow" } },
+    metrics: customMetrics,
+    reporting: { dashboardUrl: "http://x", outpostKey: "k", intervalMs: 10, fetchImpl },
+  });
+
+  assert.doesNotThrow(() => gateway.startReporting());
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(called, false);
+  gateway.stopReporting();
+});

@@ -19,6 +19,8 @@ import {
   type PaymentRequirements,
   type PaymentVerifier,
   type ResolvePublicKeyContext,
+  createOutpostReporter,
+  type OutpostReportingConfig,
 } from "@herald/sdk";
 import { FormatterRegistry } from "./formatters.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
@@ -75,6 +77,13 @@ export interface HeraldGatewayConfig {
    * segue o pipeline normalmente (rate limit, negociação de formato, formatter/next()).
    */
   monetization?: MonetizationConfig;
+  /**
+   * Push periódico do snapshot de métricas para um Herald Dashboard (fluxo Outpost,
+   * ICA-34). Suportado apenas quando `metrics` é (ou é deixado no default)
+   * InMemoryMetricsCollector — mesma restrição já aplicada pela rota GET /metrics. Sem
+   * essa opção, nada muda.
+   */
+  reporting?: OutpostReportingConfig;
 }
 
 export interface HeraldGateway {
@@ -82,6 +91,15 @@ export interface HeraldGateway {
   router: Router;
   formatters: FormatterRegistry;
   metrics: MetricsCollector;
+  /**
+   * Inicia o reporting em background (idempotente). Nunca chamado automaticamente —
+   * mesmo padrão opt-in start/stop de dashboard/src/server.ts (evita vazar timers nos
+   * testes existentes, que chamam createHeraldGateway sem parar nada). No-op se
+   * `config.reporting` não foi passado, ou se `metrics` não suporta snapshot() (não é
+   * InMemoryMetricsCollector).
+   */
+  startReporting: () => void;
+  stopReporting: () => void;
 }
 
 /**
@@ -243,5 +261,22 @@ export function createHeraldGateway(config: HeraldGatewayConfig): HeraldGateway 
     }
   });
 
-  return { router, formatters, metrics };
+  let reporter: ReturnType<typeof createOutpostReporter> | null = null;
+  if (config.reporting) {
+    if (metrics instanceof InMemoryMetricsCollector) {
+      reporter = createOutpostReporter(() => metrics.snapshot(), config.reporting);
+    } else {
+      console.warn(
+        "[herald-gateway] config.reporting definido, mas o MetricsCollector customizado não suporta snapshot() — reporting fica inativo."
+      );
+    }
+  }
+
+  return {
+    router,
+    formatters,
+    metrics,
+    startReporting: () => reporter?.start(),
+    stopReporting: () => reporter?.stop(),
+  };
 }
