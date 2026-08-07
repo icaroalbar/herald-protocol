@@ -58,6 +58,30 @@ DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
 Porta default `4100` — deliberadamente diferente do `4000` do `@herald/dashboard`, pra
 não colidir se alguém rodar os dois juntos durante a migração.
 
+## Observabilidade (Prometheus)
+
+```bash
+docker compose up -d prometheus   # sobe junto com o Postgres, porta 9090
+```
+
+`prometheus.yml` já vem configurado pra fazer scrape de `http://host.docker.internal:3000/metrics`
+(o `/metrics` de um app usando `@herald/gateway`, ex: `poc/`) — endereço portável,
+funciona em Docker Desktop (Mac/Windows) e em Linux com dockerd nativo
+(`extra_hosts: host.docker.internal:host-gateway` no `docker-compose.yml`).
+
+**Status atual**: o container sobe e o alvo fica configurado, mas o scrape ainda falha —
+`/metrics` hoje devolve JSON (`InMemoryMetricsCollector.snapshot()`), não o formato de
+texto do Prometheus. Falta implementar um `MetricsCollector` baseado em `prom-client`
+(interface já existe em `sdk/src/types.ts`, comentário em `sdk/src/metrics.ts` já aponta
+essa extensão) — issue de acompanhamento pendente.
+
+**Gotcha conhecido**: em WSL2 + Docker Desktop rodando o app monitorado *fora* de
+container (fluxo de dev atual — `node dist/server.js` direto na distro), o container do
+Prometheus não alcança `host.docker.internal` (resolve pro gateway da VM do Docker
+Desktop, não pra rede da distro WSL2). Não é bug deste repo — é limitação dessa topologia
+específica de máquina. Funciona normal em servidor Linux real ou Docker Desktop sem WSL2
+no meio.
+
 ## Testes
 
 Testes rodam contra Postgres **real** (não `pg-mem`/mock), cada arquivo de teste cria seu

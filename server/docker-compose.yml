@@ -1,4 +1,19 @@
 services:
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    # host.docker.internal — Gateway/PoC/Server rodam no host (fora de container), fora do
+    # network do compose. extra_hosts torna isso resolvível tanto no Docker Desktop
+    # (Mac/Windows/WSL2, onde já funciona nativamente) quanto no Docker "puro" do Linux
+    # (onde precisa desse mapeamento explícito pra host-gateway).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
   postgres:
     image: postgres:16-alpine
     environment:
