@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { createHeraldGateway, getHeraldContext, type HeraldGateway } from "@herald/gateway";
 import { generateSigningKeyPair, createDemoPaymentVerifier, type PaymentRequirements } from "@herald/sdk";
+import { PrometheusMetricsCollector } from "@herald/prometheus";
 import { articles, findArticle } from "./data.js";
 
 /**
@@ -33,6 +34,10 @@ const PREMIUM_ARTICLE_REQUIREMENTS: PaymentRequirements = {
 
 export function createPocApp(): { app: Express; gateway: HeraldGateway } {
   const gateway = createHeraldGateway({
+    // Default continua InMemoryMetricsCollector (JSON em /metrics, zero dependência
+    // extra) — HERALD_METRICS=prometheus troca pro coletor de @herald/prometheus
+    // (texto Prometheus em /metrics, ver server/prometheus.yml pro scrape config).
+    ...(process.env.HERALD_METRICS === "prometheus" ? { metrics: new PrometheusMetricsCollector() } : {}),
     discovery: {
       origin: "http://localhost:3000",
       capabilities: ["structured-json", "html"],

@@ -26,6 +26,22 @@ import { FormatterRegistry } from "./formatters.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { setHeraldContext } from "./context.js";
 
+/**
+ * Capacidade opcional, duck-typed — um MetricsCollector customizado pode servir GET
+ * /metrics em formato de texto Prometheus implementando isso, sem @herald/gateway (ou
+ * @herald/sdk) precisar depender de `prom-client` (ver @herald/prometheus, pacote
+ * opcional que implementa MetricsCollector + isto).
+ */
+export interface PrometheusRenderableMetrics {
+  renderPrometheus(): Promise<{ contentType: string; body: string }>;
+}
+
+function isPrometheusRenderable(
+  metrics: MetricsCollector
+): metrics is MetricsCollector & PrometheusRenderableMetrics {
+  return typeof (metrics as Partial<PrometheusRenderableMetrics>).renderPrometheus === "function";
+}
+
 export interface SignatureVerificationConfig {
   /**
    * Resolve a chave pública (PEM) a partir do keyid declarado em Signature-Input. Um
@@ -136,12 +152,16 @@ export function createHeraldGateway(config: HeraldGatewayConfig): HeraldGateway 
     res.json(discoveryDoc);
   });
 
-  router.get(metricsPath, (_req: Request, res: Response) => {
+  router.get(metricsPath, async (_req: Request, res: Response) => {
     if (metrics instanceof InMemoryMetricsCollector) {
-      res.json(metrics.snapshot());
-    } else {
-      res.status(501).json({ error: "snapshot() não suportado por este MetricsCollector" });
+      return res.json(metrics.snapshot());
     }
+    if (isPrometheusRenderable(metrics)) {
+      const { contentType, body } = await metrics.renderPrometheus();
+      res.setHeader("Content-Type", contentType);
+      return res.send(body);
+    }
+    res.status(501).json({ error: "snapshot() não suportado por este MetricsCollector" });
   });
 
   router.use(async (req: Request, res: Response, next: NextFunction) => {

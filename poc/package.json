@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@herald/gateway": "file:../gateway",
+    "@herald/prometheus": "file:../prometheus",
     "@herald/sdk": "file:../sdk",
     "express": "^4.19.0"
   },

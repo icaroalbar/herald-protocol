@@ -44,6 +44,38 @@ test("GET /metrics retorna o snapshot do InMemoryMetricsCollector padrão", asyn
   assert.equal(res.body.requestsByAgent["test-bot/1.0"], 1);
 });
 
+test("GET /metrics com MetricsCollector customizado sem snapshot()/renderPrometheus() retorna 501", async () => {
+  const customMetrics = {
+    incrementRequest: () => {},
+    recordPolicyDecision: () => {},
+    recordFormat: () => {},
+    recordError: () => {},
+    recordLatency: () => {},
+  };
+  const { app } = buildApp({ discovery: baseDiscovery, policy: { default: { read: "allow" } }, metrics: customMetrics });
+  const res = await request(app).get("/metrics");
+  assert.equal(res.status, 501);
+});
+
+test("GET /metrics com MetricsCollector que implementa renderPrometheus() serve o texto e Content-Type dele", async () => {
+  const prometheusMetrics = {
+    incrementRequest: () => {},
+    recordPolicyDecision: () => {},
+    recordFormat: () => {},
+    recordError: () => {},
+    recordLatency: () => {},
+    renderPrometheus: async () => ({
+      contentType: "text/plain; version=0.0.4; charset=utf-8",
+      body: "herald_requests_total 1\n",
+    }),
+  };
+  const { app } = buildApp({ discovery: baseDiscovery, policy: { default: { read: "allow" } }, metrics: prometheusMetrics });
+  const res = await request(app).get("/metrics");
+  assert.equal(res.status, 200);
+  assert.match(res.headers["content-type"], /^text\/plain;.*version=0\.0\.4/);
+  assert.equal(res.text, "herald_requests_total 1\n");
+});
+
 test("requisição sem headers Herald passa direto (source none): sem headers Herald-*, next() chamado", async () => {
   const { app } = buildApp({ discovery: baseDiscovery, policy: { default: { read: "allow" } } });
   const res = await request(app).get("/artigos/x");

@@ -1,0 +1,37 @@
+{
+  "name": "@herald/prometheus",
+  "version": "0.1.0",
+  "description": "MetricsCollector do Herald Protocol backed by prom-client — expõe GET /metrics em formato Prometheus/OpenMetrics.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.test.js",
+    "!dist/**/*.test.js.map",
+    "!dist/**/*.test.d.ts",
+    "!dist/**/*.test.d.ts.map"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "bash -c 'shopt -s globstar; node --test dist/**/*.test.js'"
+  },
+  "dependencies": {
+    "@herald/sdk": "file:../sdk",
+    "prom-client": "^15.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "herald-protocol",
+    "metrics",
+    "prometheus",
+    "openmetrics"
+  ]
+}
