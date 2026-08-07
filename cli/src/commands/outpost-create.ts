@@ -1,3 +1,5 @@
+import { assertSecureDashboardUrl } from "../security.js";
+
 export interface OutpostCreateOptions {
   dashboardUrl: string;
   name?: string;
@@ -15,22 +17,6 @@ export interface OutpostCreateResult {
   name: string;
   key: string;
   createdAt: string;
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
-}
-
-/** Mesma checagem de sdk/src/reporting.ts (assertSecureDashboardUrl) — duplicada aqui de
- * propósito porque cli/ é um pacote leaf, sem dependência em @herald/sdk. */
-function assertSecureDashboardUrl(dashboardUrl: string, allowInsecureHttp?: boolean): void {
-  const parsed = new URL(dashboardUrl);
-  if (parsed.protocol === "https:" || isLoopbackHost(parsed.hostname) || allowInsecureHttp) return;
-  throw new Error(
-    `dashboardUrl ("${dashboardUrl}") não é HTTPS e não é localhost — a chave recém-criada viajaria em texto puro na rede. ` +
-      "Use https://, ou passe --allow-insecure-http se a conexão já está protegida por outra camada " +
-      "(VPN/rede privada) — nunca na internet pública."
-  );
 }
 
 export async function createOutpost(options: OutpostCreateOptions): Promise<OutpostCreateResult> {
