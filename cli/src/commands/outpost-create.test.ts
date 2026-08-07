@@ -1,66 +1,21 @@
-import { test } from "node:test";
+import { test, after } from "node:test";
 import assert from "node:assert/strict";
+// Helper de teste, deep-import de propósito (não faz parte da superfície pública de
+// @herald/server — não deveria ir pro dist/lib.js).
+import { createTestDatabase } from "@herald/server/dist/test-db.js";
 import { createOutpost } from "./outpost-create.js";
 
-function fakeFetch(handler: (url: string, init: RequestInit) => { ok: boolean; status?: number; body?: unknown }): typeof fetch {
-  return (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-    const result = handler(String(input), init ?? {});
-    return {
-      ok: result.ok,
-      status: result.status ?? (result.ok ? 200 : 500),
-      json: async () => result.body ?? {},
-    } as unknown as globalThis.Response;
-  }) as unknown as typeof fetch;
-}
+const { databaseUrl, dropDatabase } = await createTestDatabase();
+after(() => dropDatabase());
 
-test("createOutpost faz POST em {serverUrl}/api/outposts com o name, se informado", async () => {
-  let capturedUrl = "";
-  let capturedBody: unknown = null;
-  const fetchImpl = fakeFetch((url, init) => {
-    capturedUrl = url;
-    capturedBody = JSON.parse(init.body as string);
-    return { ok: true, body: { id: "abc123", name: "meu-app", key: "hrld_op_x", createdAt: "2026-01-01T00:00:00.000Z" } };
-  });
-
-  const result = await createOutpost({ serverUrl: "http://localhost:4000", name: "meu-app", fetchImpl });
-
-  assert.equal(capturedUrl, "http://localhost:4000/api/outposts");
-  assert.deepEqual(capturedBody, { name: "meu-app" });
-  assert.equal(result.id, "abc123");
-  assert.equal(result.key, "hrld_op_x");
+test("createOutpost cria direto no banco com o name, se informado", async () => {
+  const result = await createOutpost({ databaseUrl, name: "meu-app" });
+  assert.ok(result.id);
+  assert.equal(result.name, "meu-app");
+  assert.ok(result.key.startsWith("hrld_op_"));
 });
 
-test("createOutpost sem name envia body vazio", async () => {
-  let capturedBody: unknown = null;
-  const fetchImpl = fakeFetch((_url, init) => {
-    capturedBody = JSON.parse(init.body as string);
-    return { ok: true, body: { id: "x", name: "gerado", key: "k", createdAt: "now" } };
-  });
-
-  await createOutpost({ serverUrl: "https://x", fetchImpl });
-  assert.deepEqual(capturedBody, {});
-});
-
-test("createOutpost lanca Error quando o Dashboard responde nao-2xx", async () => {
-  const fetchImpl = fakeFetch(() => ({ ok: false, status: 500 }));
-  await assert.rejects(() => createOutpost({ serverUrl: "https://x", fetchImpl }), /HTTP 500/);
-});
-
-test("createOutpost lanca para serverUrl http:// fora de localhost, sem allowInsecureHttp", async () => {
-  const fetchImpl = fakeFetch(() => {
-    throw new Error("fetch nao deveria ser chamado");
-  });
-  await assert.rejects(() => createOutpost({ serverUrl: "http://server.example.com", fetchImpl }), /HTTPS/);
-});
-
-test("createOutpost aceita http:// fora de localhost com allowInsecureHttp: true", async () => {
-  const fetchImpl = fakeFetch(() => ({ ok: true, body: { id: "x", name: "gerado", key: "k", createdAt: "now" } }));
-  await assert.doesNotReject(() =>
-    createOutpost({ serverUrl: "http://server.example.com", allowInsecureHttp: true, fetchImpl })
-  );
-});
-
-test("createOutpost aceita http:// em localhost sem allowInsecureHttp", async () => {
-  const fetchImpl = fakeFetch(() => ({ ok: true, body: { id: "x", name: "gerado", key: "k", createdAt: "now" } }));
-  await assert.doesNotReject(() => createOutpost({ serverUrl: "http://localhost:4000", fetchImpl }));
+test("createOutpost sem name gera um", async () => {
+  const result = await createOutpost({ databaseUrl });
+  assert.ok(result.name);
 });

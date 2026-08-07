@@ -47,7 +47,7 @@ CLI](../docs/authored/guides/getting-started.md)). Sem essas duas variáveis, na
 é aditivo.
 
 ```bash
-cd ../cli && node dist/bin.js outpost create --server-url http://localhost:4100 --name poc
+cd ../cli && node dist/bin.js outpost create --database-url postgres://herald:herald@localhost:5432/herald_server --name poc
 # guarde a key retornada
 
 HERALD_SERVER_URL=http://localhost:4100 HERALD_OUTPOST_KEY=<key> npm start

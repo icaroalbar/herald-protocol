@@ -17,12 +17,17 @@
     "!dist/**/*.test.d.ts.map"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && chmod +x dist/bin.js",
     "test": "bash -c 'shopt -s globstar; node --test dist/**/*.test.js'"
+  },
+  "dependencies": {
+    "@herald/server": "file:../server",
+    "pg": "^8.11.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0"
   },
   "engines": {
     "node": ">=18"

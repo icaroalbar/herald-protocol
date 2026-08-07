@@ -11,46 +11,65 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 > hoje, use `npm link` (abaixo) em vez de `npm install -g @herald/cli`. Isso muda assim
 > que o pacote for publicado — os comandos ficam idênticos.
 
-> **Requer Docker** — o control plane (`@herald/server`) guarda Outposts e métricas em
-> Postgres. Suba o banco antes de tudo, é o único pré-requisito de infra deste guia.
+> **Requer Docker** — o control plane guarda Outposts e métricas em Postgres. Suba o banco
+> antes de tudo, é o único pré-requisito de infra deste guia.
 
-0. Suba o Postgres do control plane e o próprio `@herald/server` (terminal 1):
+> **Dois endereços, dois donos** — `--database-url` (Postgres) é usado só pelo **CLI**
+> (você, o operador), pra criar/listar/revogar/inspecionar Outposts direto no banco.
+> `--server-url` (HTTP) é usado só pelo **Gateway/app monitorada**, em runtime, pra
+> empurrar métricas — a app nunca vê o banco, só fala com um endpoint HTTP fino e
+> autenticado pela Outpost key.
+
+0. Suba o Postgres do control plane (terminal 1):
 
    ```bash
    cd server && docker compose up -d        # sobe Postgres, espera ficar saudável
-   npm install && npm run build
-   DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
-   # Herald Server rodando em http://localhost:4100
    ```
 
-1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina):
+1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina) —
+   `@herald/cli` depende de `@herald/server` (buildado localmente) pra falar direto com
+   o Postgres:
 
    ```bash
    cd sdk && npm install && npm run build
    cd ../gateway && npm install && npm run build
+   cd ../server && npm install && npm run build
    cd ../cli && npm install && npm run build && npm link
    ```
 
    A partir daqui, `herald` funciona de qualquer pasta do sistema — sem `node dist/bin.js`.
 
 2. Crie um Outpost (a identidade da sua aplicação) e já configure o `.env` local num
-   comando só — tipo `docker run`, cria e configura junto:
+   comando só — tipo `docker run`, cria e configura junto. Não precisa de nenhum processo
+   HTTP rodando pra isso, só do Postgres do passo 0:
 
    ```bash
-   herald outpost init --server-url http://localhost:4100 --name meu-app
+   herald outpost init \
+     --database-url postgres://herald:herald@localhost:5432/herald_server \
+     --server-url http://localhost:4100 \
+     --name meu-app
    ```
 
-   Isso cria o Outpost no Server **e** grava `HERALD_SERVER_URL`/
-   `HERALD_OUTPOST_KEY` no `.env` do diretório atual — rode dentro da pasta da sua
-   aplicação. Se preferir criar e configurar em máquinas/pastas diferentes (ex: copiar a
-   key manualmente pra outro servidor), use os dois passos separados:
+   Isso cria o Outpost direto no banco (rodando a migration sozinho, se ainda não tiver
+   rodado) **e** grava `HERALD_SERVER_URL`/`HERALD_OUTPOST_KEY` no `.env` do diretório
+   atual — rode dentro da pasta da sua aplicação. Se preferir criar e configurar em
+   máquinas/pastas diferentes (ex: copiar a key manualmente pra outro servidor), use os
+   dois passos separados:
 
    ```bash
-   herald outpost create --server-url http://localhost:4100 --name meu-app  # imprime a key
-   herald init                                                              # pergunta URL + key, grava .env
+   herald outpost create --database-url postgres://herald:herald@localhost:5432/herald_server --name meu-app  # imprime a key
+   herald init                                                                                                 # pergunta URL + key, grava .env
    ```
 
-3. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
+3. Suba o processo `@herald/server` (terminal 2) — é a única peça que precisa estar no ar
+   pra métricas chegarem de verdade; provisionar Outposts (passo 2) não depende dele:
+
+   ```bash
+   cd server && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
+   # Herald Server rodando em http://localhost:4100
+   ```
+
+4. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
    `node --env-file=.env` exige **Node ≥20.6**, acima do `engines: >=18` declarado nos
    pacotes; se estiver em Node 18/19, carregue as 2 variáveis manualmente):
 
@@ -71,12 +90,13 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    nenhuma chamada a infraestrutura da Herald — o Server que gera e valida a Outpost key
    é o mesmo que você está rodando.
 
-4. Acompanhe os Outposts pela linha de comando — sem tela, tudo via CLI:
+5. Acompanhe os Outposts pela linha de comando — sem tela, tudo via CLI, sempre com
+   `--database-url` (não `--server-url` — o CLI fala direto com o banco):
 
    ```bash
-   herald outpost ls                                    # lista todos, com last-seen
-   herald outpost inspect <id> --server-url http://localhost:4100  # detalhe + último report
-   herald outpost rm <id> --server-url http://localhost:4100       # revoga — reports em cascata, push com a key antiga passa a 401
+   herald outpost ls --database-url postgres://herald:herald@localhost:5432/herald_server
+   herald outpost inspect <id> --database-url postgres://herald:herald@localhost:5432/herald_server  # detalhe + último report
+   herald outpost rm <id> --database-url postgres://herald:herald@localhost:5432/herald_server        # revoga — reports em cascata, push com a key antiga passa a 401
    ```
 
 > `@herald/dashboard` (UI web com gráficos) continua existindo, separado, pro caso de uso

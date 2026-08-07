@@ -6,13 +6,14 @@ on:
   pull_request:
     branches: [main]
 
-# Builda e testa os pacotes na ordem de dependência real (sdk -> gateway/dashboard -> poc).
-# Cada pacote usa dependências locais via "file:../<pacote>" (não é um monorepo com
-# workspaces npm) — por isso o build de um pacote precisa ter rodado antes do `npm install`
-# do próximo, senão ele copia um `dist/` desatualizado ou inexistente. Ver TESTPLAN.md §5.
-# cli/ e server/ são exceção: não dependem de nenhum outro pacote via file: — build/test
-# independente. server/ também é o único pacote com dependência externa real (Postgres),
-# daí o bloco `services:` abaixo (nativo do GitHub Actions, sem tooling extra).
+# Builda e testa os pacotes na ordem de dependência real (sdk -> gateway/dashboard ->
+# server -> cli -> poc). Cada pacote usa dependências locais via "file:../<pacote>" (não é
+# um monorepo com workspaces npm) — por isso o build de um pacote precisa ter rodado antes
+# do `npm install` do próximo, senão ele copia um `dist/` desatualizado ou inexistente. Ver
+# TESTPLAN.md §5. cli/ depende de @herald/server (file:../server) pra falar direto com
+# Postgres — Server precisa rodar antes de CLI. server/ e cli/ também são os únicos
+# pacotes com dependência externa real (Postgres), daí o bloco `services:` abaixo (nativo
+# do GitHub Actions, sem tooling extra) e o DATABASE_URL nos dois steps.
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -59,15 +60,17 @@ jobs:
           npm run build
           npm test
 
-      - name: CLI — install, build, test
-        working-directory: cli
+      - name: Server — install, build, test
+        working-directory: server
+        env:
+          DATABASE_URL: postgres://herald:herald@localhost:5432/herald_server
         run: |
           npm install
           npm run build
           npm test
 
-      - name: Server — install, build, test
-        working-directory: server
+      - name: CLI — install, build, test
+        working-directory: cli
         env:
           DATABASE_URL: postgres://herald:herald@localhost:5432/herald_server
         run: |

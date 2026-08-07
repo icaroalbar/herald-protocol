@@ -1,8 +1,10 @@
-import { test } from "node:test";
+import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createTestDatabase } from "@herald/server/dist/test-db.js";
+import { createOutpost } from "./commands/outpost-create.js";
 import {
   runCli,
   runOutpostCreateCommand,
@@ -12,8 +14,21 @@ import {
   runOutpostInspectCommand,
 } from "./index.js";
 
-function fakeFetch(body: unknown): typeof fetch {
-  return (async () => ({ ok: true, status: 200, json: async () => body }) as unknown as globalThis.Response) as unknown as typeof fetch;
+const { databaseUrl, dropDatabase } = await createTestDatabase();
+after(() => dropDatabase());
+
+/** DATABASE_URL fica setado no processo de teste (createTestDatabase() precisa dele pra
+ * conectar no Postgres administrativo) — testes que verificam "sem --database-url" tem
+ * que limpar essa var temporariamente, senão o fallback de env var (proposital,
+ * ver resolveDatabaseUrl) mascara o caso de erro. */
+async function withoutDatabaseUrlEnv(fn: () => Promise<void>): Promise<void> {
+  const saved = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  try {
+    await fn();
+  } finally {
+    process.env.DATABASE_URL = saved;
+  }
 }
 
 test("comando desconhecido nao lanca e seta exitCode 1", async () => {
@@ -29,84 +44,88 @@ test("sem comando (help) nao lanca e nao seta exitCode", async () => {
   assert.equal(process.exitCode, undefined);
 });
 
-test("outpost create sem --server-url nao lanca, seta exitCode 1", async () => {
-  process.exitCode = undefined;
-  await assert.doesNotReject(() => runOutpostCreateCommand([]));
+test("outpost create sem --database-url nao lanca, seta exitCode 1", async () => {
+  await withoutDatabaseUrlEnv(async () => {
+    process.exitCode = undefined;
+    await assert.doesNotReject(() => runOutpostCreateCommand([]));
+    assert.equal(process.exitCode, 1);
+    process.exitCode = undefined;
+  });
+});
+
+test("outpost init sem --database-url ou sem --server-url nao lanca, seta exitCode 1", async () => {
+  await withoutDatabaseUrlEnv(async () => {
+    process.exitCode = undefined;
+    await assert.doesNotReject(() => runOutpostInitCommand([]));
+    assert.equal(process.exitCode, 1);
+    process.exitCode = undefined;
+  });
+
+  await assert.doesNotReject(() => runOutpostInitCommand(["--database-url", databaseUrl]));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
 });
 
-test("outpost init sem --server-url nao lanca, seta exitCode 1", async () => {
-  process.exitCode = undefined;
-  await assert.doesNotReject(() => runOutpostInitCommand([]));
-  assert.equal(process.exitCode, 1);
-  process.exitCode = undefined;
-});
-
-test("outpost init cria o outpost E grava .env de uma vez (docker-style, um comando so)", async () => {
+test("outpost init cria o outpost no banco E grava .env de uma vez (docker-style, um comando so)", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "herald-cli-outpost-init-test-"));
-  const fetchImpl = fakeFetch({ id: "abc123", name: "teste", key: "hrld_op_x", createdAt: "2026-01-01T00:00:00.000Z" });
 
-  await runOutpostInitCommand(["--server-url", "https://server.example.com", "--name", "teste"], { cwd, fetchImpl });
+  await runOutpostInitCommand(
+    ["--database-url", databaseUrl, "--server-url", "https://server.example.com", "--name", "teste"],
+    { cwd }
+  );
 
   const content = readFileSync(join(cwd, ".env"), "utf-8");
   assert.match(content, /HERALD_SERVER_URL=https:\/\/server\.example\.com/);
-  assert.match(content, /HERALD_OUTPOST_KEY=hrld_op_x/);
+  assert.match(content, /HERALD_OUTPOST_KEY=hrld_op_/);
 });
 
-test("outpost ls sem --server-url nao lanca, seta exitCode 1", async () => {
-  process.exitCode = undefined;
-  await assert.doesNotReject(() => runOutpostLsCommand([]));
-  assert.equal(process.exitCode, 1);
-  process.exitCode = undefined;
+test("outpost ls sem --database-url nao lanca, seta exitCode 1", async () => {
+  await withoutDatabaseUrlEnv(async () => {
+    process.exitCode = undefined;
+    await assert.doesNotReject(() => runOutpostLsCommand([]));
+    assert.equal(process.exitCode, 1);
+    process.exitCode = undefined;
+  });
 });
 
-test("outpost ls sem outposts imprime mensagem, sem exitCode", async () => {
+test("outpost ls com --database-url nao seta exitCode", async () => {
   process.exitCode = undefined;
-  const fetchImpl = fakeFetch({ outposts: [] });
-  await runOutpostLsCommand(["--server-url", "https://x"], { fetchImpl });
+  await runOutpostLsCommand(["--database-url", databaseUrl]);
   assert.equal(process.exitCode, undefined);
 });
 
-test("outpost rm sem id ou sem --server-url nao lanca, seta exitCode 1", async () => {
+test("outpost rm sem id ou sem --database-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostRmCommand([]));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
 
-  await assert.doesNotReject(() => runOutpostRmCommand(["abc123"]));
+  await assert.doesNotReject(() => runOutpostRmCommand(["naoexiste1234"]));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
 });
 
-test("outpost rm com id + --server-url chama DELETE e nao seta exitCode em sucesso", async () => {
+test("outpost rm com id + --database-url remove e nao seta exitCode em sucesso", async () => {
   process.exitCode = undefined;
-  const fetchImpl = (async () => ({ ok: true, status: 204 }) as unknown as globalThis.Response) as unknown as typeof fetch;
-  await runOutpostRmCommand(["abc123", "--server-url", "https://x"], { fetchImpl });
+  const created = await createOutpost({ databaseUrl, name: "rm-alvo" });
+  await runOutpostRmCommand([created.id, "--database-url", databaseUrl]);
   assert.equal(process.exitCode, undefined);
 });
 
-test("outpost inspect sem id ou sem --server-url nao lanca, seta exitCode 1", async () => {
+test("outpost inspect sem id ou sem --database-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostInspectCommand([]));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
 
-  await assert.doesNotReject(() => runOutpostInspectCommand(["abc123"]));
+  await assert.doesNotReject(() => runOutpostInspectCommand(["naoexiste1234"]));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
 });
 
-test("outpost inspect com id + --server-url imprime o detalhe, sem exitCode", async () => {
+test("outpost inspect com id + --database-url imprime o detalhe, sem exitCode", async () => {
   process.exitCode = undefined;
-  const fetchImpl = fakeFetch({
-    id: "abc123",
-    name: "teste",
-    keyPrefix: "hrld_op_xy",
-    createdAt: "now",
-    lastSeenAt: null,
-    latestReport: null,
-  });
-  await runOutpostInspectCommand(["abc123", "--server-url", "https://x"], { fetchImpl });
+  const created = await createOutpost({ databaseUrl, name: "inspect-alvo" });
+  await runOutpostInspectCommand([created.id, "--database-url", databaseUrl]);
   assert.equal(process.exitCode, undefined);
 });

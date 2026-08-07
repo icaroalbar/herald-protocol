@@ -4,8 +4,8 @@
   "description": "Servidor de controle do Herald Protocol — gestão de Outposts e histórico de métricas, backed by Postgres. Sem UI (ver @herald/dashboard, congelado em ICA-34).",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/lib.js",
+  "types": "./dist/lib.d.ts",
   "files": [
     "dist",
     "!dist/**/*.test.js",

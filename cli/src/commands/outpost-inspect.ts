@@ -1,4 +1,4 @@
-import { assertSecureServerUrl } from "../security.js";
+import { withDb } from "../db.js";
 
 export interface OutpostDetail {
   id: string;
@@ -10,20 +10,16 @@ export interface OutpostDetail {
 }
 
 export interface OutpostInspectOptions {
-  serverUrl: string;
-  fetchImpl?: typeof fetch;
-  allowInsecureHttp?: boolean;
+  databaseUrl: string;
 }
 
 export async function inspectOutpost(id: string, options: OutpostInspectOptions): Promise<OutpostDetail> {
-  assertSecureServerUrl(options.serverUrl, options.allowInsecureHttp);
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${options.serverUrl.replace(/\/+$/, "")}/api/outposts/${id}`);
-  if (res.status === 404) {
-    throw new Error(`Outpost ${id} não encontrado`);
-  }
-  if (!res.ok) {
-    throw new Error(`Server respondeu HTTP ${res.status} ao consultar Outpost ${id}`);
-  }
-  return (await res.json()) as OutpostDetail;
+  return withDb(options.databaseUrl, async ({ outposts, reports }) => {
+    const outpost = await outposts.get(id);
+    if (!outpost) {
+      throw new Error(`Outpost ${id} não encontrado`);
+    }
+    const latestReport = await reports.latest(id);
+    return { ...outpost, latestReport };
+  });
 }

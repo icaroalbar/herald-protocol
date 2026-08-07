@@ -1,21 +1,14 @@
-import { assertSecureServerUrl } from "../security.js";
+import { withDb } from "../db.js";
 
 export interface OutpostRemoveOptions {
-  serverUrl: string;
-  fetchImpl?: typeof fetch;
-  allowInsecureHttp?: boolean;
+  databaseUrl: string;
 }
 
 export async function removeOutpost(id: string, options: OutpostRemoveOptions): Promise<void> {
-  assertSecureServerUrl(options.serverUrl, options.allowInsecureHttp);
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${options.serverUrl.replace(/\/+$/, "")}/api/outposts/${id}`, {
-    method: "DELETE",
+  await withDb(options.databaseUrl, async ({ outposts }) => {
+    const removed = await outposts.remove(id);
+    if (!removed) {
+      throw new Error(`Outpost ${id} não encontrado`);
+    }
   });
-  if (res.status === 404) {
-    throw new Error(`Outpost ${id} não encontrado`);
-  }
-  if (!res.ok) {
-    throw new Error(`Server respondeu HTTP ${res.status} ao remover Outpost ${id}`);
-  }
 }

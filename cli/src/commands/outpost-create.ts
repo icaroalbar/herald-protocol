@@ -1,15 +1,8 @@
-import { assertSecureServerUrl } from "../security.js";
+import { withDb } from "../db.js";
 
 export interface OutpostCreateOptions {
-  serverUrl: string;
+  databaseUrl: string;
   name?: string;
-  fetchImpl?: typeof fetch;
-  /**
-   * Permite serverUrl em HTTP puro fora de localhost — a chave recém-criada volta em
-   * texto puro na resposta, e viajaria pela rede sem proteção. Só ligue isso se a conexão
-   * já está protegida por outra camada (VPN, rede privada/VPC) — nunca na internet pública.
-   */
-  allowInsecureHttp?: boolean;
 }
 
 export interface OutpostCreateResult {
@@ -20,15 +13,5 @@ export interface OutpostCreateResult {
 }
 
 export async function createOutpost(options: OutpostCreateOptions): Promise<OutpostCreateResult> {
-  assertSecureServerUrl(options.serverUrl, options.allowInsecureHttp);
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${options.serverUrl.replace(/\/+$/, "")}/api/outposts`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(options.name ? { name: options.name } : {}),
-  });
-  if (!res.ok) {
-    throw new Error(`Server respondeu HTTP ${res.status} ao criar Outpost`);
-  }
-  return (await res.json()) as OutpostCreateResult;
+  return withDb(options.databaseUrl, ({ outposts }) => outposts.create(options.name));
 }

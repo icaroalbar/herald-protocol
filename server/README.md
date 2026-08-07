@@ -5,9 +5,15 @@ backed by Postgres. **Sem UI** (ver [`@herald/dashboard`](../dashboard), congela
 a revisão que decidiu deixar a parte visual de lado por agora — continua existindo,
 separado, pro caso de uso original de fazer poll de `/metrics` de Gateways individuais).
 
-Mesmo contrato HTTP que `@herald/dashboard` já tinha pra Outposts — `@herald/sdk`
-(`createOutpostReporter`) e `@herald/cli` continuam funcionando sem mudança de código,
-só apontando pra um servidor diferente.
+Duas formas de falar com este pacote, cada uma pra um consumidor diferente:
+
+- **Biblioteca** (`@herald/server`, import direto) — `@herald/cli` usa isso pra
+  criar/listar/revogar/inspecionar Outposts direto no Postgres, sem HTTP no meio.
+  `PgOutpostStore`, `PgReportsStore`, `createPool`, `migrate`, `SCHEMA_SQL` (`src/lib.ts`).
+- **HTTP** (processo `npm start`, `POST /api/outposts/reports`) — o Gateway/app monitorada
+  usa isso pra empurrar métricas (`@herald/sdk`'s `createOutpostReporter`,
+  `HERALD_SERVER_URL`). É a única rota HTTP que existe — a app monitorada nunca precisa
+  (nem deve) ter credencial de Postgres, só a Outpost key.
 
 ## Por que Postgres, e por que isso agora exige Docker
 
@@ -67,11 +73,25 @@ DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm run build
 
 | Rota | Descrição |
 |---|---|
-| `POST /api/outposts` | Cria um Outpost — `{name?}` → `{id, name, key, createdAt}` (key só aparece aqui, uma vez) |
-| `GET /api/outposts` | Lista Outposts (sem chave/hash) |
-| `GET /api/outposts/:id` | Detalhe de um Outpost + último report recebido |
-| `DELETE /api/outposts/:id` | Revoga um Outpost (cascade: apaga o histórico de reports também) |
 | `POST /api/outposts/reports` | Push de métricas, autenticado via `Authorization: Bearer <key>` |
+
+Criar/listar/revogar/inspecionar Outpost não são mais rotas HTTP — são chamadas via
+`@herald/cli` (`herald outpost create/ls/rm/inspect --database-url ...`), que importa este
+pacote como biblioteca e fala direto com Postgres.
+
+## Biblioteca (`@herald/server`)
+
+```ts
+import { createPool, migrate, PgOutpostStore, PgReportsStore } from "@herald/server";
+
+const pool = createPool(databaseUrl);
+await migrate(pool); // idempotente, seguro de rodar toda vez
+const outposts = new PgOutpostStore(pool);
+const reports = new PgReportsStore(pool);
+```
+
+`src/index.ts` (o processo HTTP, `npm start`) não faz parte desse `main`/`types` — só é
+invocado via `node dist/index.js`, tem efeito colateral (`app.listen`).
 
 ## Limitações conhecidas
 

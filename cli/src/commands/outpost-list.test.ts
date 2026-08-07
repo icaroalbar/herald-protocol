@@ -1,33 +1,22 @@
-import { test } from "node:test";
+import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { createTestDatabase } from "@herald/server/dist/test-db.js";
+import { createOutpost } from "./outpost-create.js";
 import { listOutposts } from "./outpost-list.js";
 
-function fakeFetch(body: unknown): typeof fetch {
-  return (async () => ({ ok: true, status: 200, json: async () => body }) as unknown as globalThis.Response) as unknown as typeof fetch;
-}
+const { databaseUrl, dropDatabase } = await createTestDatabase();
+after(() => dropDatabase());
 
-test("listOutposts faz GET em {serverUrl}/api/outposts e retorna a lista", async () => {
-  const outposts = [{ id: "a", name: "app-a", createdAt: "now", lastSeenAt: null }];
-  const fetchImpl = fakeFetch({ outposts });
-
-  const result = await listOutposts({ serverUrl: "https://x", fetchImpl });
-  assert.deepEqual(result, outposts);
+test("listOutposts sem nenhum Outpost retorna lista vazia", async () => {
+  const result = await listOutposts({ databaseUrl });
+  assert.deepEqual(result, []);
 });
 
-test("listOutposts lanca Error quando o Server responde nao-2xx", async () => {
-  const fetchImpl = (async () => ({ ok: false, status: 500 }) as unknown as globalThis.Response) as unknown as typeof fetch;
-  await assert.rejects(() => listOutposts({ serverUrl: "https://x", fetchImpl }), /HTTP 500/);
-});
-
-test("listOutposts lanca pra serverUrl http:// fora de localhost, sem allowInsecureHttp", async () => {
-  const fetchImpl = fakeFetch({ outposts: [] });
-  await assert.rejects(
-    () => listOutposts({ serverUrl: "http://server.example.com", fetchImpl }),
-    /HTTPS/
-  );
-});
-
-test("listOutposts aceita http:// em localhost sem allowInsecureHttp", async () => {
-  const fetchImpl = fakeFetch({ outposts: [] });
-  await assert.doesNotReject(() => listOutposts({ serverUrl: "http://localhost:4100", fetchImpl }));
+test("listOutposts retorna os Outposts criados, sem key/keyHash", async () => {
+  const created = await createOutpost({ databaseUrl, name: "app-a" });
+  const result = await listOutposts({ databaseUrl });
+  const found = result.find((o) => o.id === created.id);
+  assert.ok(found);
+  assert.equal(found?.name, "app-a");
+  assert.equal((found as unknown as { key?: string }).key, undefined);
 });

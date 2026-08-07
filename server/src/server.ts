@@ -4,7 +4,7 @@ import { loadConfig, type ServerConfig } from "./config.js";
 import { createPool, migrate } from "./db.js";
 import { PgOutpostStore } from "./outposts.js";
 import { PgReportsStore } from "./reports.js";
-import { createOutpostRouter } from "./outpost-routes.js";
+import { createPushRouter } from "./push-routes.js";
 
 export interface ServerApp {
   app: Express;
@@ -26,7 +26,7 @@ export async function createServerApp(configOverride?: Partial<ServerConfig>): P
   const app = express();
   const outpostStore = new PgOutpostStore(pool);
   const reportsStore = new PgReportsStore(pool);
-  app.use(createOutpostRouter(outpostStore, reportsStore));
+  app.use(createPushRouter(outpostStore, reportsStore));
 
   async function close(): Promise<void> {
     await pool.end();

@@ -5,6 +5,8 @@ import { listOutposts } from "./commands/outpost-list.js";
 import { removeOutpost } from "./commands/outpost-remove.js";
 import { inspectOutpost } from "./commands/outpost-inspect.js";
 import { upsertEnvVars } from "./env-file.js";
+import { resolveDatabaseUrl } from "./db.js";
+import { assertSecureServerUrl } from "./security.js";
 
 function parseFlags(argv: string[]): Record<string, string> {
   const flags: Record<string, string> = {};
@@ -21,14 +23,14 @@ function parseFlags(argv: string[]): Record<string, string> {
 
 function printHelp(): void {
   console.log(`Uso:
-  herald outpost init    --server-url <url> [--name <nome>] [--allow-insecure-http]
-  herald outpost create  --server-url <url> [--name <nome>] [--allow-insecure-http]
-  herald outpost ls      --server-url <url>
-  herald outpost rm      <id> --server-url <url>
-  herald outpost inspect <id> --server-url <url>
+  herald outpost init    --database-url <url> --server-url <url> [--name <nome>] [--allow-insecure-http]
+  herald outpost create  --database-url <url> [--name <nome>]
+  herald outpost ls      --database-url <url>
+  herald outpost rm      <id> --database-url <url>
+  herald outpost inspect <id> --database-url <url>
   herald init
 
-  outpost init     cria um novo Outpost no Server E grava/atualiza .env de uma vez
+  outpost init     cria um novo Outpost direto no banco E grava/atualiza .env de uma vez
                    (tipo "docker run" — cria e configura junto)
   outpost create   só cria o Outpost, imprime id/name/key (pra colar em outro lugar
                    manualmente, ou copiar a key pra outra máquina)
@@ -37,24 +39,28 @@ function printHelp(): void {
   outpost inspect  mostra detalhes + o último snapshot de métricas recebido
   init             pergunta a URL do Server + uma key já existente, grava/atualiza .env
 
-  --allow-insecure-http   permite serverUrl em HTTP fora de localhost (a key viaja em
+  --database-url   connection string do Postgres (ou export DATABASE_URL=...) — usado só
+                   pelo CLI, pra criar/listar/revogar/inspecionar Outposts direto no banco
+  --server-url     endereço HTTP do processo @herald/server (só em "outpost init", vai
+                   pro .env — é o que o Gateway usa em runtime pra empurrar métricas, nunca
+                   toca o banco)
+  --allow-insecure-http   permite --server-url em HTTP fora de localhost (a key viaja em
                           texto puro na rede) — só use se a conexão já está protegida por
                           outra camada (VPN/rede privada), nunca na internet pública`);
 }
 
 export async function runOutpostCreateCommand(argv: string[]): Promise<void> {
   const flags = parseFlags(argv);
-  if (!flags["server-url"]) {
-    console.error("Faltou --server-url");
+  let databaseUrl: string;
+  try {
+    databaseUrl = resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
     return;
   }
   try {
-    const result = await createOutpost({
-      serverUrl: flags["server-url"],
-      name: flags["name"],
-      allowInsecureHttp: "allow-insecure-http" in flags,
-    });
+    const result = await createOutpost({ databaseUrl, name: flags["name"] });
     console.log(`Outpost criado: ${result.name} (${result.id})`);
     console.log(`Key: ${result.key}`);
     console.log("Guarde esta key agora — ela não pode ser recuperada depois.");
@@ -66,21 +72,26 @@ export async function runOutpostCreateCommand(argv: string[]): Promise<void> {
 
 export async function runOutpostInitCommand(
   argv: string[],
-  deps: { cwd?: string; fetchImpl?: typeof fetch } = {}
+  deps: { cwd?: string } = {}
 ): Promise<void> {
   const flags = parseFlags(argv);
+  let databaseUrl: string;
+  try {
+    databaseUrl = resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
   if (!flags["server-url"]) {
     console.error("Faltou --server-url");
     process.exitCode = 1;
     return;
   }
   try {
-    const result = await createOutpost({
-      serverUrl: flags["server-url"],
-      name: flags["name"],
-      allowInsecureHttp: "allow-insecure-http" in flags,
-      fetchImpl: deps.fetchImpl,
-    });
+    assertSecureServerUrl(flags["server-url"], "allow-insecure-http" in flags);
+
+    const result = await createOutpost({ databaseUrl, name: flags["name"] });
 
     const envPath = path.join(deps.cwd ?? process.cwd(), ".env");
     await upsertEnvVars(envPath, {
@@ -96,22 +107,18 @@ export async function runOutpostInitCommand(
   }
 }
 
-export async function runOutpostLsCommand(
-  argv: string[],
-  deps: { fetchImpl?: typeof fetch } = {}
-): Promise<void> {
+export async function runOutpostLsCommand(argv: string[]): Promise<void> {
   const flags = parseFlags(argv);
-  if (!flags["server-url"]) {
-    console.error("Faltou --server-url");
+  let databaseUrl: string;
+  try {
+    databaseUrl = resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
     return;
   }
   try {
-    const outposts = await listOutposts({
-      serverUrl: flags["server-url"],
-      allowInsecureHttp: "allow-insecure-http" in flags,
-      fetchImpl: deps.fetchImpl,
-    });
+    const outposts = await listOutposts({ databaseUrl });
     if (!outposts.length) {
       console.log("Nenhum Outpost cadastrado.");
       return;
@@ -125,23 +132,24 @@ export async function runOutpostLsCommand(
   }
 }
 
-export async function runOutpostRmCommand(
-  argv: string[],
-  deps: { fetchImpl?: typeof fetch } = {}
-): Promise<void> {
+export async function runOutpostRmCommand(argv: string[]): Promise<void> {
   const [id, ...flagArgs] = argv;
   const flags = parseFlags(flagArgs);
-  if (!id || !flags["server-url"]) {
-    console.error("Uso: herald outpost rm <id> --server-url <url>");
+  let databaseUrl: string;
+  try {
+    databaseUrl = resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  if (!id) {
+    console.error("Uso: herald outpost rm <id> --database-url <url>");
     process.exitCode = 1;
     return;
   }
   try {
-    await removeOutpost(id, {
-      serverUrl: flags["server-url"],
-      allowInsecureHttp: "allow-insecure-http" in flags,
-      fetchImpl: deps.fetchImpl,
-    });
+    await removeOutpost(id, { databaseUrl });
     console.log(`Outpost ${id} removido.`);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
@@ -149,23 +157,24 @@ export async function runOutpostRmCommand(
   }
 }
 
-export async function runOutpostInspectCommand(
-  argv: string[],
-  deps: { fetchImpl?: typeof fetch } = {}
-): Promise<void> {
+export async function runOutpostInspectCommand(argv: string[]): Promise<void> {
   const [id, ...flagArgs] = argv;
   const flags = parseFlags(flagArgs);
-  if (!id || !flags["server-url"]) {
-    console.error("Uso: herald outpost inspect <id> --server-url <url>");
+  let databaseUrl: string;
+  try {
+    databaseUrl = resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  if (!id) {
+    console.error("Uso: herald outpost inspect <id> --database-url <url>");
     process.exitCode = 1;
     return;
   }
   try {
-    const detail = await inspectOutpost(id, {
-      serverUrl: flags["server-url"],
-      allowInsecureHttp: "allow-insecure-http" in flags,
-      fetchImpl: deps.fetchImpl,
-    });
+    const detail = await inspectOutpost(id, { databaseUrl });
     console.log(JSON.stringify(detail, null, 2));
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
