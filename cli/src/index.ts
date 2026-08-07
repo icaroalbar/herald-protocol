@@ -161,8 +161,15 @@ export async function runOutpostLsCommand(argv: string[]): Promise<void> {
       console.log("Nenhum Outpost cadastrado.");
       return;
     }
+    const idW = Math.max(12, ...outposts.map((o) => o.id.length)) + 2;
+    const nameW = Math.max(20, ...outposts.map((o) => o.name.length)) + 2;
+    console.log(
+      `${"ID".padEnd(idW)}${"NOME".padEnd(nameW)}${"HUMANO".padStart(8)}  ${"AGENTE".padStart(8)}  VISTO`
+    );
     for (const o of outposts) {
-      console.log(`${o.id}  ${o.name}  criado ${o.createdAt}  visto ${o.lastSeenAt ?? "nunca"}`);
+      console.log(
+        `${o.id.padEnd(idW)}${o.name.padEnd(nameW)}${String(o.humanRequests).padStart(8)}  ${String(o.agentRequests).padStart(8)}  ${o.lastSeenAt ?? "nunca"}`
+      );
     }
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));

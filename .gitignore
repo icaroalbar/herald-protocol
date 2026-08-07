@@ -4,6 +4,9 @@ dist/
 .DS_Store
 *:Zone.Identifier
 
+# gerado por `herald outpost init`/`herald init` — carrega a Outpost key em texto puro
+.env
+
 # rascunho pessoal, nome antigo superado
 Projeto_Agent_Interaction_Protocol_AIP.pdf
 
