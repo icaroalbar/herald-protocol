@@ -8,6 +8,7 @@ import { upsertEnvVars } from "./env-file.js";
 import { resolveDatabaseUrl, provisionDatabase } from "./db.js";
 import { saveDatabaseUrl } from "./config.js";
 import { assertSecureServerUrl } from "./security.js";
+import { defaultAsk, closePrompt } from "./prompt.js";
 
 function parseFlags(argv: string[]): Record<string, string> {
   const flags: Record<string, string> = {};
@@ -34,7 +35,7 @@ function printHelp(): void {
 
   configure        roda uma vez, na instalação: aplica o schema no banco e salva a URL
                    em ~/.herald/config.json — comandos "outpost ..." seguintes não
-                   precisam mais de --database-url
+                   precisam mais de --database-url. Sem a flag, pergunta interativamente
   outpost init     cria um novo Outpost direto no banco E grava/atualiza .env de uma vez
                    (tipo "docker run" — cria e configura junto)
   outpost create   só cria o Outpost, imprime id/name/key (pra colar em outro lugar
@@ -57,22 +58,32 @@ function printHelp(): void {
 
 export async function runConfigureCommand(
   argv: string[],
-  deps: { configPath?: string } = {}
+  deps: { configPath?: string; ask?: (question: string) => Promise<string>; close?: () => void } = {}
 ): Promise<void> {
   const flags = parseFlags(argv);
-  if (!flags["database-url"]) {
-    console.error("Faltou --database-url");
-    process.exitCode = 1;
-    return;
-  }
+  let databaseUrl = flags["database-url"];
+  let prompted = false;
+
   try {
-    await provisionDatabase(flags["database-url"]);
-    await saveDatabaseUrl(flags["database-url"], deps.configPath);
+    if (!databaseUrl) {
+      const ask = deps.ask ?? defaultAsk;
+      databaseUrl = (await ask("URL do Postgres (ex: postgres://user:senha@host:5432/dbname): ")).trim();
+      prompted = true;
+    }
+    if (!databaseUrl) {
+      console.error("Faltou --database-url");
+      process.exitCode = 1;
+      return;
+    }
+    await provisionDatabase(databaseUrl);
+    await saveDatabaseUrl(databaseUrl, deps.configPath);
     console.log("Banco configurado (schema aplicado) e URL salva.");
     console.log("Comandos `herald outpost ...` seguintes não precisam mais de --database-url.");
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
+  } finally {
+    if (prompted) (deps.close ?? closePrompt)();
   }
 }
 

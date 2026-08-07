@@ -42,11 +42,21 @@ async function withoutDatabaseUrlEnv(fn: () => Promise<void>): Promise<void> {
   }
 }
 
-test("configure sem --database-url nao lanca, seta exitCode 1", async () => {
+test("configure sem --database-url e resposta vazia no prompt nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
-  await assert.doesNotReject(() => runConfigureCommand([]));
+  await assert.doesNotReject(() => runConfigureCommand([], { ask: async () => "" }));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
+});
+
+test("configure sem --database-url pergunta interativamente e usa a resposta", async () => {
+  process.exitCode = undefined;
+  const dir = mkdtempSync(join(tmpdir(), "herald-cli-configure-prompt-test-"));
+  const configPath = join(dir, "config.json");
+
+  await runConfigureCommand([], { configPath, ask: async () => databaseUrl });
+  assert.equal(process.exitCode, undefined);
+  assert.equal(await readSavedDatabaseUrl(configPath), databaseUrl);
 });
 
 test("configure aplica schema e salva a URL — comando seguinte sem --database-url usa a config salva", async () => {
