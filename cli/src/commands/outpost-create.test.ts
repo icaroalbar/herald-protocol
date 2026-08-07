@@ -37,11 +37,30 @@ test("createOutpost sem name envia body vazio", async () => {
     return { ok: true, body: { id: "x", name: "gerado", key: "k", createdAt: "now" } };
   });
 
-  await createOutpost({ dashboardUrl: "http://x", fetchImpl });
+  await createOutpost({ dashboardUrl: "https://x", fetchImpl });
   assert.deepEqual(capturedBody, {});
 });
 
 test("createOutpost lanca Error quando o Dashboard responde nao-2xx", async () => {
   const fetchImpl = fakeFetch(() => ({ ok: false, status: 500 }));
-  await assert.rejects(() => createOutpost({ dashboardUrl: "http://x", fetchImpl }), /HTTP 500/);
+  await assert.rejects(() => createOutpost({ dashboardUrl: "https://x", fetchImpl }), /HTTP 500/);
+});
+
+test("createOutpost lanca para dashboardUrl http:// fora de localhost, sem allowInsecureHttp", async () => {
+  const fetchImpl = fakeFetch(() => {
+    throw new Error("fetch nao deveria ser chamado");
+  });
+  await assert.rejects(() => createOutpost({ dashboardUrl: "http://dashboard.example.com", fetchImpl }), /HTTPS/);
+});
+
+test("createOutpost aceita http:// fora de localhost com allowInsecureHttp: true", async () => {
+  const fetchImpl = fakeFetch(() => ({ ok: true, body: { id: "x", name: "gerado", key: "k", createdAt: "now" } }));
+  await assert.doesNotReject(() =>
+    createOutpost({ dashboardUrl: "http://dashboard.example.com", allowInsecureHttp: true, fetchImpl })
+  );
+});
+
+test("createOutpost aceita http:// em localhost sem allowInsecureHttp", async () => {
+  const fetchImpl = fakeFetch(() => ({ ok: true, body: { id: "x", name: "gerado", key: "k", createdAt: "now" } }));
+  await assert.doesNotReject(() => createOutpost({ dashboardUrl: "http://localhost:4000", fetchImpl }));
 });

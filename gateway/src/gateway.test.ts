@@ -422,7 +422,7 @@ test("reporting: startReporting() empurra o snapshot pro Dashboard periodicament
   const { gateway } = buildApp({
     discovery: baseDiscovery,
     policy: { default: { read: "allow" } },
-    reporting: { dashboardUrl: "http://dashboard.local", outpostKey: "hrld_op_test", intervalMs: 15, fetchImpl },
+    reporting: { dashboardUrl: "https://dashboard.local", outpostKey: "hrld_op_test", intervalMs: 15, fetchImpl },
   });
 
   gateway.startReporting();
@@ -472,7 +472,7 @@ test("reporting: MetricsCollector customizado (nao InMemoryMetricsCollector) + r
     discovery: baseDiscovery,
     policy: { default: { read: "allow" } },
     metrics: customMetrics,
-    reporting: { dashboardUrl: "http://x", outpostKey: "k", intervalMs: 10, fetchImpl },
+    reporting: { dashboardUrl: "https://x", outpostKey: "k", intervalMs: 10, fetchImpl },
   });
 
   assert.doesNotThrow(() => gateway.startReporting());

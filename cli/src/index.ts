@@ -16,11 +16,15 @@ function parseFlags(argv: string[]): Record<string, string> {
 
 function printHelp(): void {
   console.log(`Uso:
-  herald outpost create --dashboard-url <url> [--name <nome>]
+  herald outpost create --dashboard-url <url> [--name <nome>] [--allow-insecure-http]
   herald init
 
   outpost create   cria um novo Outpost no Dashboard, imprime id/name/key
-  init             pergunta a URL do Dashboard + a key, grava/atualiza .env`);
+  init             pergunta a URL do Dashboard + a key, grava/atualiza .env
+
+  --allow-insecure-http   permite dashboardUrl em HTTP fora de localhost (a key viaja em
+                          texto puro na rede) — só use se a conexão já está protegida por
+                          outra camada (VPN/rede privada), nunca na internet pública`);
 }
 
 export async function runOutpostCreateCommand(argv: string[]): Promise<void> {
@@ -30,10 +34,19 @@ export async function runOutpostCreateCommand(argv: string[]): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  const result = await createOutpost({ dashboardUrl: flags["dashboard-url"], name: flags["name"] });
-  console.log(`Outpost criado: ${result.name} (${result.id})`);
-  console.log(`Key: ${result.key}`);
-  console.log("Guarde esta key agora — ela não pode ser recuperada depois.");
+  try {
+    const result = await createOutpost({
+      dashboardUrl: flags["dashboard-url"],
+      name: flags["name"],
+      allowInsecureHttp: "allow-insecure-http" in flags,
+    });
+    console.log(`Outpost criado: ${result.name} (${result.id})`);
+    console.log(`Key: ${result.key}`);
+    console.log("Guarde esta key agora — ela não pode ser recuperada depois.");
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  }
 }
 
 export async function runCli(argv: string[]): Promise<void> {

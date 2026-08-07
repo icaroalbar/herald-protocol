@@ -13,6 +13,30 @@ export interface OutpostReportingConfig {
   timeoutMs?: number;
   /** Implementação de fetch a usar (testes); default: fetch global. */
   fetchImpl?: typeof fetch;
+  /**
+   * Permite `dashboardUrl` em HTTP puro fora de localhost — a chave (header
+   * `Authorization: Bearer`) viajaria em texto puro na rede a cada push. Só ligue isso se
+   * a conexão já está protegida por outra camada (VPN, rede privada/VPC) — nunca através
+   * da internet pública. default: false.
+   */
+  allowInsecureHttp?: boolean;
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  // new URL(...).hostname mantém colchetes em endereços IPv6, ex: "[::1]".
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+}
+
+/** Lança se dashboardUrl não é https:// e não é localhost, a menos que allowInsecureHttp
+ * esteja explicitamente ligado — evita a chave viajando em texto puro por engano. */
+export function assertSecureDashboardUrl(dashboardUrl: string, allowInsecureHttp?: boolean): void {
+  const parsed = new URL(dashboardUrl);
+  if (parsed.protocol === "https:" || isLoopbackHost(parsed.hostname) || allowInsecureHttp) return;
+  throw new Error(
+    `dashboardUrl ("${dashboardUrl}") não é HTTPS e não é localhost — a chave viajaria em texto puro na rede. ` +
+      "Use https://, ou passe allowInsecureHttp: true se a conexão já está protegida por outra camada " +
+      "(VPN/rede privada) — nunca na internet pública."
+  );
 }
 
 export interface OutpostReporter {
@@ -35,6 +59,7 @@ export function createOutpostReporter(getSnapshot: () => unknown, config: Outpos
     // esperada/rotina em produção).
     throw new Error("OutpostReportingConfig requer dashboardUrl e outpostKey não vazios");
   }
+  assertSecureDashboardUrl(config.dashboardUrl, config.allowInsecureHttp);
 
   const fetchImpl = config.fetchImpl ?? fetch;
   const intervalMs = config.intervalMs ?? 60_000;
