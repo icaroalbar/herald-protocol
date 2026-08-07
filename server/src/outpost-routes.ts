@@ -11,9 +11,8 @@ function extractBearerToken(req: Request): string | null {
 }
 
 /**
- * Mesmo contrato HTTP de dashboard/src/outpost-routes.ts (ICA-34), portado pra Postgres —
- * sdk/src/reporting.ts e cli/src/commands/outpost-create.ts não precisam mudar nada além
- * do rename de dashboardUrl->serverUrl. Único endpoint novo: GET /api/outposts/:id.
+ * Mesmo contrato HTTP de dashboard/src/outpost-routes.ts (ICA-34), portado pra Postgres.
+ * Único endpoint novo: GET /api/outposts/:id.
  */
 export function createOutpostRouter(store: PgOutpostStore, reportsStore: PgReportsStore): Router {
   const router = Router();

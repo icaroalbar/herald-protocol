@@ -10,12 +10,12 @@ function cannedAsk(answers: string[]): (question: string) => Promise<string> {
   return async () => answers[i++];
 }
 
-test("runInit grava HERALD_DASHBOARD_URL e HERALD_OUTPOST_KEY no .env do cwd informado", async () => {
+test("runInit grava HERALD_SERVER_URL e HERALD_OUTPOST_KEY no .env do cwd informado", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "herald-cli-init-test-"));
   await runInit({ ask: cannedAsk(["http://localhost:4000", "hrld_op_abc123"]), cwd });
 
   const content = readFileSync(join(cwd, ".env"), "utf-8");
-  assert.match(content, /HERALD_DASHBOARD_URL=http:\/\/localhost:4000/);
+  assert.match(content, /HERALD_SERVER_URL=http:\/\/localhost:4000/);
   assert.match(content, /HERALD_OUTPOST_KEY=hrld_op_abc123/);
 });
 
@@ -24,7 +24,7 @@ test("runInit remove espacos em branco das respostas", async () => {
   await runInit({ ask: cannedAsk(["  http://localhost:4000  ", "  hrld_op_abc123  "]), cwd });
 
   const content = readFileSync(join(cwd, ".env"), "utf-8");
-  assert.match(content, /HERALD_DASHBOARD_URL=http:\/\/localhost:4000\n/);
+  assert.match(content, /HERALD_SERVER_URL=http:\/\/localhost:4000\n/);
   assert.match(content, /HERALD_OUTPOST_KEY=hrld_op_abc123\n/);
 });
 
@@ -37,5 +37,5 @@ test("runInit atualiza um .env ja existente sem apagar outras chaves", async () 
 
   const content = readFileSync(join(cwd, ".env"), "utf-8");
   assert.match(content, /DATABASE_URL=postgres:\/\/x/);
-  assert.match(content, /HERALD_DASHBOARD_URL=http:\/\/localhost:4000/);
+  assert.match(content, /HERALD_SERVER_URL=http:\/\/localhost:4000/);
 });

@@ -410,7 +410,7 @@ test("ask com monetization e Payment-Signature malformado: tratado como se nao h
   assert.equal(res.headers["payment-response"], undefined);
 });
 
-test("reporting: startReporting() empurra o snapshot pro Dashboard periodicamente, stopReporting() interrompe", async () => {
+test("reporting: startReporting() empurra o snapshot pro Server periodicamente, stopReporting() interrompe", async () => {
   let callCount = 0;
   let lastAuth = "";
   const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
@@ -422,7 +422,7 @@ test("reporting: startReporting() empurra o snapshot pro Dashboard periodicament
   const { gateway } = buildApp({
     discovery: baseDiscovery,
     policy: { default: { read: "allow" } },
-    reporting: { dashboardUrl: "https://dashboard.local", outpostKey: "hrld_op_test", intervalMs: 15, fetchImpl },
+    reporting: { serverUrl: "https://server.local", outpostKey: "hrld_op_test", intervalMs: 15, fetchImpl },
   });
 
   gateway.startReporting();
@@ -472,7 +472,7 @@ test("reporting: MetricsCollector customizado (nao InMemoryMetricsCollector) + r
     discovery: baseDiscovery,
     policy: { default: { read: "allow" } },
     metrics: customMetrics,
-    reporting: { dashboardUrl: "https://x", outpostKey: "k", intervalMs: 10, fetchImpl },
+    reporting: { serverUrl: "https://x", outpostKey: "k", intervalMs: 10, fetchImpl },
   });
 
   assert.doesNotThrow(() => gateway.startReporting());

@@ -9,7 +9,7 @@ function fakeFetch(handler: (url: string, init: RequestInit) => { ok: boolean; s
   }) as unknown as typeof fetch;
 }
 
-test("removeOutpost faz DELETE em {dashboardUrl}/api/outposts/{id}", async () => {
+test("removeOutpost faz DELETE em {serverUrl}/api/outposts/{id}", async () => {
   let capturedUrl = "";
   let capturedMethod = "";
   const fetchImpl = fakeFetch((url, init) => {
@@ -18,25 +18,25 @@ test("removeOutpost faz DELETE em {dashboardUrl}/api/outposts/{id}", async () =>
     return { ok: true, status: 204 };
   });
 
-  await removeOutpost("abc123", { dashboardUrl: "https://x", fetchImpl });
+  await removeOutpost("abc123", { serverUrl: "https://x", fetchImpl });
   assert.equal(capturedUrl, "https://x/api/outposts/abc123");
   assert.equal(capturedMethod, "DELETE");
 });
 
 test("removeOutpost lanca Error especifico quando o id nao existe (404)", async () => {
   const fetchImpl = fakeFetch(() => ({ ok: false, status: 404 }));
-  await assert.rejects(() => removeOutpost("nao-existe", { dashboardUrl: "https://x", fetchImpl }), /não encontrado/);
+  await assert.rejects(() => removeOutpost("nao-existe", { serverUrl: "https://x", fetchImpl }), /não encontrado/);
 });
 
 test("removeOutpost lanca Error generico pra outro status nao-2xx", async () => {
   const fetchImpl = fakeFetch(() => ({ ok: false, status: 500 }));
-  await assert.rejects(() => removeOutpost("abc123", { dashboardUrl: "https://x", fetchImpl }), /HTTP 500/);
+  await assert.rejects(() => removeOutpost("abc123", { serverUrl: "https://x", fetchImpl }), /HTTP 500/);
 });
 
-test("removeOutpost lanca pra dashboardUrl http:// fora de localhost, sem allowInsecureHttp", async () => {
+test("removeOutpost lanca pra serverUrl http:// fora de localhost, sem allowInsecureHttp", async () => {
   const fetchImpl = fakeFetch(() => ({ ok: true }));
   await assert.rejects(
-    () => removeOutpost("abc123", { dashboardUrl: "http://dashboard.example.com", fetchImpl }),
+    () => removeOutpost("abc123", { serverUrl: "http://server.example.com", fetchImpl }),
     /HTTPS/
   );
 });

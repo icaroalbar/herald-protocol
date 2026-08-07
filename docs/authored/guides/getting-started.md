@@ -11,13 +11,23 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 > hoje, use `npm link` (abaixo) em vez de `npm install -g @herald/cli`. Isso muda assim
 > que o pacote for publicado — os comandos ficam idênticos.
 
+> **Requer Docker** — o control plane (`@herald/server`) guarda Outposts e métricas em
+> Postgres. Suba o banco antes de tudo, é o único pré-requisito de infra deste guia.
+
+0. Suba o Postgres do control plane e o próprio `@herald/server` (terminal 1):
+
+   ```bash
+   cd server && docker compose up -d        # sobe Postgres, espera ficar saudável
+   npm install && npm run build
+   DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
+   # Herald Server rodando em http://localhost:4100
+   ```
+
 1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina):
 
    ```bash
    cd sdk && npm install && npm run build
    cd ../gateway && npm install && npm run build
-   cd ../dashboard && npm install && npm run build && npm start   # terminal 1
-
    cd ../cli && npm install && npm run build && npm link
    ```
 
@@ -27,17 +37,17 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    comando só — tipo `docker run`, cria e configura junto:
 
    ```bash
-   herald outpost init --dashboard-url http://localhost:4000 --name meu-app
+   herald outpost init --server-url http://localhost:4100 --name meu-app
    ```
 
-   Isso cria o Outpost no Dashboard **e** grava `HERALD_DASHBOARD_URL`/
+   Isso cria o Outpost no Server **e** grava `HERALD_SERVER_URL`/
    `HERALD_OUTPOST_KEY` no `.env` do diretório atual — rode dentro da pasta da sua
    aplicação. Se preferir criar e configurar em máquinas/pastas diferentes (ex: copiar a
    key manualmente pra outro servidor), use os dois passos separados:
 
    ```bash
-   herald outpost create --dashboard-url http://localhost:4000 --name meu-app  # imprime a key
-   herald init                                                                  # pergunta URL + key, grava .env
+   herald outpost create --server-url http://localhost:4100 --name meu-app  # imprime a key
+   herald init                                                              # pergunta URL + key, grava .env
    ```
 
 3. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
@@ -49,20 +59,30 @@ SDK cru (`@herald/sdk`, só o que você precisar).
      discovery: { /* ... */ },
      policy: { /* ... */ },
      reporting: {
-       dashboardUrl: process.env.HERALD_DASHBOARD_URL!,
+       serverUrl: process.env.HERALD_SERVER_URL!,
        outpostKey: process.env.HERALD_OUTPOST_KEY!,
      },
    });
    gateway.startReporting();
    ```
 
-   As métricas aparecem em `GET /api/metrics/history` do Dashboard, sob a chave
-   `outpost:<id>` — sem precisar configurar `HERALD_GATEWAYS` manualmente.
-
    Push funciona através de firewalls corporativos outbound-only (ao contrário do modelo
-   de polling abaixo, que exige que o Dashboard alcance sua aplicação); self-hosting
-   continua totalmente funcional sem nenhuma chamada a infraestrutura da Herald — o
-   Dashboard que gera e valida a Outpost key é o mesmo que você está rodando.
+   de polling do Dashboard, ver abaixo); self-hosting continua totalmente funcional sem
+   nenhuma chamada a infraestrutura da Herald — o Server que gera e valida a Outpost key
+   é o mesmo que você está rodando.
+
+4. Acompanhe os Outposts pela linha de comando — sem tela, tudo via CLI:
+
+   ```bash
+   herald outpost ls                                    # lista todos, com last-seen
+   herald outpost inspect <id> --server-url http://localhost:4100  # detalhe + último report
+   herald outpost rm <id> --server-url http://localhost:4100       # revoga — reports em cascata, push com a key antiga passa a 401
+   ```
+
+> `@herald/dashboard` (UI web com gráficos) continua existindo, separado, pro caso de uso
+> original de fazer *polling* das métricas de um Gateway individual em `/metrics` — ver
+> seção "Via Gateway" abaixo. Ele não fala com o `@herald/server`; são dois control planes
+> independentes, cada um pro seu fluxo (polling vs. push de Outpost).
 
 ## Via Gateway (configuração manual)
 

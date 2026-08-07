@@ -1,4 +1,4 @@
-import { assertSecureDashboardUrl } from "../security.js";
+import { assertSecureServerUrl } from "../security.js";
 
 export interface OutpostSummary {
   id: string;
@@ -8,15 +8,15 @@ export interface OutpostSummary {
 }
 
 export interface OutpostListOptions {
-  dashboardUrl: string;
+  serverUrl: string;
   fetchImpl?: typeof fetch;
   allowInsecureHttp?: boolean;
 }
 
 export async function listOutposts(options: OutpostListOptions): Promise<OutpostSummary[]> {
-  assertSecureDashboardUrl(options.dashboardUrl, options.allowInsecureHttp);
+  assertSecureServerUrl(options.serverUrl, options.allowInsecureHttp);
   const fetchImpl = options.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${options.dashboardUrl.replace(/\/+$/, "")}/api/outposts`);
+  const res = await fetchImpl(`${options.serverUrl.replace(/\/+$/, "")}/api/outposts`);
   if (!res.ok) {
     throw new Error(`Server respondeu HTTP ${res.status} ao listar Outposts`);
   }

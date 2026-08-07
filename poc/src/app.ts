@@ -73,13 +73,13 @@ export function createPocApp(): { app: Express; gateway: HeraldGateway } {
         resource === "/artigos/relatorio-premium" ? PREMIUM_ARTICLE_REQUIREMENTS : null,
       verifier: createDemoPaymentVerifier(),
     },
-    // Push de métricas pro Dashboard via Outpost (ICA-34) — só ativa se as duas env vars
+    // Push de métricas pro Server via Outpost (ICA-34) — só ativa se as duas env vars
     // estiverem presentes (geradas por `herald outpost create` + `herald init`). Sem
     // elas, a PoC continua funcionando exatamente como antes.
-    ...(process.env.HERALD_DASHBOARD_URL && process.env.HERALD_OUTPOST_KEY
+    ...(process.env.HERALD_SERVER_URL && process.env.HERALD_OUTPOST_KEY
       ? {
           reporting: {
-            dashboardUrl: process.env.HERALD_DASHBOARD_URL,
+            serverUrl: process.env.HERALD_SERVER_URL,
             outpostKey: process.env.HERALD_OUTPOST_KEY,
             intervalMs: 10_000,
           },

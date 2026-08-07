@@ -1,15 +1,15 @@
-import { assertSecureDashboardUrl } from "../security.js";
+import { assertSecureServerUrl } from "../security.js";
 
 export interface OutpostRemoveOptions {
-  dashboardUrl: string;
+  serverUrl: string;
   fetchImpl?: typeof fetch;
   allowInsecureHttp?: boolean;
 }
 
 export async function removeOutpost(id: string, options: OutpostRemoveOptions): Promise<void> {
-  assertSecureDashboardUrl(options.dashboardUrl, options.allowInsecureHttp);
+  assertSecureServerUrl(options.serverUrl, options.allowInsecureHttp);
   const fetchImpl = options.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${options.dashboardUrl.replace(/\/+$/, "")}/api/outposts/${id}`, {
+  const res = await fetchImpl(`${options.serverUrl.replace(/\/+$/, "")}/api/outposts/${id}`, {
     method: "DELETE",
   });
   if (res.status === 404) {

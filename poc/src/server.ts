@@ -9,7 +9,7 @@ app.listen(port, () => {
   console.log(`Herald PoC rodando em http://localhost:${port}`);
   console.log(`Discovery: http://localhost:${port}/.well-known/herald`);
   console.log(`Métricas:  http://localhost:${port}/metrics`);
-  if (process.env.HERALD_DASHBOARD_URL) {
-    console.log(`Reportando pro Outpost em: ${process.env.HERALD_DASHBOARD_URL}`);
+  if (process.env.HERALD_SERVER_URL) {
+    console.log(`Reportando pro Outpost em: ${process.env.HERALD_SERVER_URL}`);
   }
 });

@@ -51,8 +51,8 @@ test("preserva linhas em branco e comentarios existentes", async () => {
 
 test("grava duas chaves novas de uma vez, ambas presentes", async () => {
   const filePath = tmpEnvPath();
-  await upsertEnvVars(filePath, { HERALD_DASHBOARD_URL: "http://localhost:4000", HERALD_OUTPOST_KEY: "hrld_op_abc" });
+  await upsertEnvVars(filePath, { HERALD_SERVER_URL: "http://localhost:4000", HERALD_OUTPOST_KEY: "hrld_op_abc" });
   const content = readFileSync(filePath, "utf-8");
-  assert.match(content, /HERALD_DASHBOARD_URL=http:\/\/localhost:4000/);
+  assert.match(content, /HERALD_SERVER_URL=http:\/\/localhost:4000/);
   assert.match(content, /HERALD_OUTPOST_KEY=hrld_op_abc/);
 });

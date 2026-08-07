@@ -1,4 +1,4 @@
-import { assertSecureDashboardUrl } from "../security.js";
+import { assertSecureServerUrl } from "../security.js";
 
 export interface OutpostDetail {
   id: string;
@@ -10,15 +10,15 @@ export interface OutpostDetail {
 }
 
 export interface OutpostInspectOptions {
-  dashboardUrl: string;
+  serverUrl: string;
   fetchImpl?: typeof fetch;
   allowInsecureHttp?: boolean;
 }
 
 export async function inspectOutpost(id: string, options: OutpostInspectOptions): Promise<OutpostDetail> {
-  assertSecureDashboardUrl(options.dashboardUrl, options.allowInsecureHttp);
+  assertSecureServerUrl(options.serverUrl, options.allowInsecureHttp);
   const fetchImpl = options.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${options.dashboardUrl.replace(/\/+$/, "")}/api/outposts/${id}`);
+  const res = await fetchImpl(`${options.serverUrl.replace(/\/+$/, "")}/api/outposts/${id}`);
   if (res.status === 404) {
     throw new Error(`Outpost ${id} não encontrado`);
   }

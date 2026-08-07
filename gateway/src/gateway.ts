@@ -78,7 +78,7 @@ export interface HeraldGatewayConfig {
    */
   monetization?: MonetizationConfig;
   /**
-   * Push periódico do snapshot de métricas para um Herald Dashboard (fluxo Outpost,
+   * Push periódico do snapshot de métricas para um Herald Server (fluxo Outpost,
    * ICA-34). Suportado apenas quando `metrics` é (ou é deixado no default)
    * InMemoryMetricsCollector — mesma restrição já aplicada pela rota GET /metrics. Sem
    * essa opção, nada muda.

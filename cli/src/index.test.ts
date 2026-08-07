@@ -29,14 +29,14 @@ test("sem comando (help) nao lanca e nao seta exitCode", async () => {
   assert.equal(process.exitCode, undefined);
 });
 
-test("outpost create sem --dashboard-url nao lanca, seta exitCode 1", async () => {
+test("outpost create sem --server-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostCreateCommand([]));
   assert.equal(process.exitCode, 1);
   process.exitCode = undefined;
 });
 
-test("outpost init sem --dashboard-url nao lanca, seta exitCode 1", async () => {
+test("outpost init sem --server-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostInitCommand([]));
   assert.equal(process.exitCode, 1);
@@ -47,14 +47,14 @@ test("outpost init cria o outpost E grava .env de uma vez (docker-style, um coma
   const cwd = mkdtempSync(join(tmpdir(), "herald-cli-outpost-init-test-"));
   const fetchImpl = fakeFetch({ id: "abc123", name: "teste", key: "hrld_op_x", createdAt: "2026-01-01T00:00:00.000Z" });
 
-  await runOutpostInitCommand(["--dashboard-url", "https://dashboard.example.com", "--name", "teste"], { cwd, fetchImpl });
+  await runOutpostInitCommand(["--server-url", "https://server.example.com", "--name", "teste"], { cwd, fetchImpl });
 
   const content = readFileSync(join(cwd, ".env"), "utf-8");
-  assert.match(content, /HERALD_DASHBOARD_URL=https:\/\/dashboard\.example\.com/);
+  assert.match(content, /HERALD_SERVER_URL=https:\/\/server\.example\.com/);
   assert.match(content, /HERALD_OUTPOST_KEY=hrld_op_x/);
 });
 
-test("outpost ls sem --dashboard-url nao lanca, seta exitCode 1", async () => {
+test("outpost ls sem --server-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostLsCommand([]));
   assert.equal(process.exitCode, 1);
@@ -64,11 +64,11 @@ test("outpost ls sem --dashboard-url nao lanca, seta exitCode 1", async () => {
 test("outpost ls sem outposts imprime mensagem, sem exitCode", async () => {
   process.exitCode = undefined;
   const fetchImpl = fakeFetch({ outposts: [] });
-  await runOutpostLsCommand(["--dashboard-url", "https://x"], { fetchImpl });
+  await runOutpostLsCommand(["--server-url", "https://x"], { fetchImpl });
   assert.equal(process.exitCode, undefined);
 });
 
-test("outpost rm sem id ou sem --dashboard-url nao lanca, seta exitCode 1", async () => {
+test("outpost rm sem id ou sem --server-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostRmCommand([]));
   assert.equal(process.exitCode, 1);
@@ -79,14 +79,14 @@ test("outpost rm sem id ou sem --dashboard-url nao lanca, seta exitCode 1", asyn
   process.exitCode = undefined;
 });
 
-test("outpost rm com id + --dashboard-url chama DELETE e nao seta exitCode em sucesso", async () => {
+test("outpost rm com id + --server-url chama DELETE e nao seta exitCode em sucesso", async () => {
   process.exitCode = undefined;
   const fetchImpl = (async () => ({ ok: true, status: 204 }) as unknown as globalThis.Response) as unknown as typeof fetch;
-  await runOutpostRmCommand(["abc123", "--dashboard-url", "https://x"], { fetchImpl });
+  await runOutpostRmCommand(["abc123", "--server-url", "https://x"], { fetchImpl });
   assert.equal(process.exitCode, undefined);
 });
 
-test("outpost inspect sem id ou sem --dashboard-url nao lanca, seta exitCode 1", async () => {
+test("outpost inspect sem id ou sem --server-url nao lanca, seta exitCode 1", async () => {
   process.exitCode = undefined;
   await assert.doesNotReject(() => runOutpostInspectCommand([]));
   assert.equal(process.exitCode, 1);
@@ -97,7 +97,7 @@ test("outpost inspect sem id ou sem --dashboard-url nao lanca, seta exitCode 1",
   process.exitCode = undefined;
 });
 
-test("outpost inspect com id + --dashboard-url imprime o detalhe, sem exitCode", async () => {
+test("outpost inspect com id + --server-url imprime o detalhe, sem exitCode", async () => {
   process.exitCode = undefined;
   const fetchImpl = fakeFetch({
     id: "abc123",
@@ -107,6 +107,6 @@ test("outpost inspect com id + --dashboard-url imprime o detalhe, sem exitCode",
     lastSeenAt: null,
     latestReport: null,
   });
-  await runOutpostInspectCommand(["abc123", "--dashboard-url", "https://x"], { fetchImpl });
+  await runOutpostInspectCommand(["abc123", "--server-url", "https://x"], { fetchImpl });
   assert.equal(process.exitCode, undefined);
 });

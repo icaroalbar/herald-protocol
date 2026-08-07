@@ -15,12 +15,12 @@ export async function runInit(deps: InitDeps = { ask: defaultAsk, close: closePr
   const cwd = deps.cwd ?? process.cwd();
 
   try {
-    const dashboardUrl = (await deps.ask("URL do Dashboard (ex: http://localhost:4000): ")).trim();
+    const serverUrl = (await deps.ask("URL do Server (ex: http://localhost:4000): ")).trim();
     const outpostKey = (await deps.ask("Outpost key (gerada via `herald outpost create`): ")).trim();
 
     const envPath = path.join(cwd, ".env");
     await upsertEnvVars(envPath, {
-      HERALD_DASHBOARD_URL: dashboardUrl,
+      HERALD_SERVER_URL: serverUrl,
       HERALD_OUTPOST_KEY: outpostKey,
     });
 

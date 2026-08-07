@@ -39,18 +39,18 @@ Terminal 2 — roda a validação dos 5 pontos:
 npm run demo
 ```
 
-### Reportando pro Dashboard via Outpost (opcional)
+### Reportando pro Server via Outpost (opcional)
 
-Se `HERALD_DASHBOARD_URL` e `HERALD_OUTPOST_KEY` estiverem definidos, a PoC empurra
-métricas periodicamente pro Dashboard (fluxo Outpost, ver [guia de instalação via
+Se `HERALD_SERVER_URL` e `HERALD_OUTPOST_KEY` estiverem definidos, a PoC empurra
+métricas periodicamente pro Server (fluxo Outpost, ver [guia de instalação via
 CLI](../docs/authored/guides/getting-started.md)). Sem essas duas variáveis, nada muda —
 é aditivo.
 
 ```bash
-cd ../cli && node dist/bin.js outpost create --dashboard-url http://localhost:4000 --name poc
+cd ../cli && node dist/bin.js outpost create --server-url http://localhost:4100 --name poc
 # guarde a key retornada
 
-HERALD_DASHBOARD_URL=http://localhost:4000 HERALD_OUTPOST_KEY=<key> npm start
+HERALD_SERVER_URL=http://localhost:4100 HERALD_OUTPOST_KEY=<key> npm start
 ```
 
 Saída esperada (todas as linhas `OK`):

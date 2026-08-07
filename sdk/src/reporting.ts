@@ -1,11 +1,11 @@
 /**
- * Push de métricas para um Herald Dashboard (fluxo Outpost, ICA-34). Espelha o estilo de
+ * Push de métricas para um Herald Server (fluxo Outpost, ICA-34). Espelha o estilo de
  * closure de `agent-keys.ts` (createAgentKeyResolver), mas invertido: empurra em vez de
  * buscar.
  */
 
 export interface OutpostReportingConfig {
-  dashboardUrl: string;
+  serverUrl: string;
   outpostKey: string;
   /** default 60_000 */
   intervalMs?: number;
@@ -14,7 +14,7 @@ export interface OutpostReportingConfig {
   /** Implementação de fetch a usar (testes); default: fetch global. */
   fetchImpl?: typeof fetch;
   /**
-   * Permite `dashboardUrl` em HTTP puro fora de localhost — a chave (header
+   * Permite `serverUrl` em HTTP puro fora de localhost — a chave (header
    * `Authorization: Bearer`) viajaria em texto puro na rede a cada push. Só ligue isso se
    * a conexão já está protegida por outra camada (VPN, rede privada/VPC) — nunca através
    * da internet pública. default: false.
@@ -27,13 +27,13 @@ function isLoopbackHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
 }
 
-/** Lança se dashboardUrl não é https:// e não é localhost, a menos que allowInsecureHttp
+/** Lança se serverUrl não é https:// e não é localhost, a menos que allowInsecureHttp
  * esteja explicitamente ligado — evita a chave viajando em texto puro por engano. */
-export function assertSecureDashboardUrl(dashboardUrl: string, allowInsecureHttp?: boolean): void {
-  const parsed = new URL(dashboardUrl);
+export function assertSecureServerUrl(serverUrl: string, allowInsecureHttp?: boolean): void {
+  const parsed = new URL(serverUrl);
   if (parsed.protocol === "https:" || isLoopbackHost(parsed.hostname) || allowInsecureHttp) return;
   throw new Error(
-    `dashboardUrl ("${dashboardUrl}") não é HTTPS e não é localhost — a chave viajaria em texto puro na rede. ` +
+    `serverUrl ("${serverUrl}") não é HTTPS e não é localhost — a chave viajaria em texto puro na rede. ` +
       "Use https://, ou passe allowInsecureHttp: true se a conexão já está protegida por outra camada " +
       "(VPN/rede privada) — nunca na internet pública."
   );
@@ -53,18 +53,18 @@ export interface OutpostReporter {
  * acoplar em `InMemoryMetricsCollector` — quem instancia decide de onde vem o snapshot.
  */
 export function createOutpostReporter(getSnapshot: () => unknown, config: OutpostReportingConfig): OutpostReporter {
-  if (!config.dashboardUrl || !config.outpostKey) {
+  if (!config.serverUrl || !config.outpostKey) {
     // Erro de configuração (env var ausente/vazia), não falha de rede — falha alto e
     // cedo na construção. Diferente de reportOnce(), que nunca lança (falha de rede é
     // esperada/rotina em produção).
-    throw new Error("OutpostReportingConfig requer dashboardUrl e outpostKey não vazios");
+    throw new Error("OutpostReportingConfig requer serverUrl e outpostKey não vazios");
   }
-  assertSecureDashboardUrl(config.dashboardUrl, config.allowInsecureHttp);
+  assertSecureServerUrl(config.serverUrl, config.allowInsecureHttp);
 
   const fetchImpl = config.fetchImpl ?? fetch;
   const intervalMs = config.intervalMs ?? 60_000;
   const timeoutMs = config.timeoutMs ?? 5_000;
-  const url = `${config.dashboardUrl.replace(/\/+$/, "")}/api/outposts/reports`;
+  const url = `${config.serverUrl.replace(/\/+$/, "")}/api/outposts/reports`;
   let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
   async function reportOnce(): Promise<boolean> {
