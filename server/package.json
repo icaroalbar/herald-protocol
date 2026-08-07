@@ -1,0 +1,43 @@
+{
+  "name": "@herald/server",
+  "version": "0.1.0",
+  "description": "Servidor de controle do Herald Protocol — gestão de Outposts e histórico de métricas, backed by Postgres. Sem UI (ver @herald/dashboard, congelado em ICA-34).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.test.js",
+    "!dist/**/*.test.js.map",
+    "!dist/**/*.test.d.ts",
+    "!dist/**/*.test.d.ts.map"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "bash -c 'shopt -s globstar; node --test dist/**/*.test.js'"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "herald-protocol",
+    "server",
+    "outpost",
+    "postgres",
+    "control-plane"
+  ]
+}
