@@ -7,30 +7,38 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 
 ## Via CLI (mais rápido)
 
-> **Ainda não publicado no npm** — os comandos abaixo usam `node dist/bin.js` do
-> repositório clonado, não `npx @herald/cli`. Isso muda assim que o pacote for publicado.
+> **Ainda não publicado no npm** — pra ter o comando `herald` disponível globalmente
+> hoje, use `npm link` (abaixo) em vez de `npm install -g @herald/cli`. Isso muda assim
+> que o pacote for publicado — os comandos ficam idênticos.
 
-1. Suba o Dashboard (self-hosted) e crie um Outpost — a identidade da sua aplicação:
+1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina):
 
    ```bash
    cd sdk && npm install && npm run build
    cd ../gateway && npm install && npm run build
    cd ../dashboard && npm install && npm run build && npm start   # terminal 1
 
-   cd ../cli && npm install && npm run build
-   node dist/bin.js outpost create --dashboard-url http://localhost:4000 --name meu-app
+   cd ../cli && npm install && npm run build && npm link
    ```
 
-   Guarde a `key` retornada — não pode ser recuperada depois de fechar o terminal.
+   A partir daqui, `herald` funciona de qualquer pasta do sistema — sem `node dist/bin.js`.
 
-2. Na sua aplicação (já usando `@herald/sdk` + `@herald/gateway`), rode:
+2. Crie um Outpost (a identidade da sua aplicação) e já configure o `.env` local num
+   comando só — tipo `docker run`, cria e configura junto:
 
    ```bash
-   node <caminho-do-repo>/cli/dist/bin.js init
+   herald outpost init --dashboard-url http://localhost:4000 --name meu-app
    ```
 
-   Informe a URL do Dashboard e a key. Isso grava (ou atualiza) `HERALD_DASHBOARD_URL` e
-   `HERALD_OUTPOST_KEY` no `.env` do diretório atual.
+   Isso cria o Outpost no Dashboard **e** grava `HERALD_DASHBOARD_URL`/
+   `HERALD_OUTPOST_KEY` no `.env` do diretório atual — rode dentro da pasta da sua
+   aplicação. Se preferir criar e configurar em máquinas/pastas diferentes (ex: copiar a
+   key manualmente pra outro servidor), use os dois passos separados:
+
+   ```bash
+   herald outpost create --dashboard-url http://localhost:4000 --name meu-app  # imprime a key
+   herald init                                                                  # pergunta URL + key, grava .env
+   ```
 
 3. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
    `node --env-file=.env` exige **Node ≥20.6**, acima do `engines: >=18` declarado nos
