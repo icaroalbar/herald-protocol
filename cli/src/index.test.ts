@@ -1,12 +1,15 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync } from "node:fs";
+import { readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTestDatabase } from "@herald/server/dist/test-db.js";
 import { createOutpost } from "./commands/outpost-create.js";
+import { defaultConfigPath, readSavedDatabaseUrl } from "./config.js";
 import {
   runCli,
+  runConfigureCommand,
   runOutpostCreateCommand,
   runOutpostInitCommand,
   runOutpostLsCommand,
@@ -18,18 +21,43 @@ const { databaseUrl, dropDatabase } = await createTestDatabase();
 after(() => dropDatabase());
 
 /** DATABASE_URL fica setado no processo de teste (createTestDatabase() precisa dele pra
- * conectar no Postgres administrativo) — testes que verificam "sem --database-url" tem
- * que limpar essa var temporariamente, senão o fallback de env var (proposital,
- * ver resolveDatabaseUrl) mascara o caso de erro. */
+ * conectar no Postgres administrativo), e a máquina que roda o teste pode ter um
+ * ~/.herald/config.json real (de um `herald configure` de verdade) — testes que
+ * verificam "sem --database-url" têm que isolar dos dois, senão o fallback de env var/
+ * config salva (proposital, ver resolveDatabaseUrl) mascara o caso de erro. Restaura o
+ * que já existia depois, nunca destrói config real do usuário. */
 async function withoutDatabaseUrlEnv(fn: () => Promise<void>): Promise<void> {
-  const saved = process.env.DATABASE_URL;
+  const savedEnv = process.env.DATABASE_URL;
   delete process.env.DATABASE_URL;
+
+  const configPath = defaultConfigPath();
+  const savedConfig = await readFile(configPath, "utf-8").catch(() => undefined);
+  if (savedConfig !== undefined) await rm(configPath);
+
   try {
     await fn();
   } finally {
-    process.env.DATABASE_URL = saved;
+    process.env.DATABASE_URL = savedEnv;
+    if (savedConfig !== undefined) await writeFile(configPath, savedConfig, "utf-8");
   }
 }
+
+test("configure sem --database-url nao lanca, seta exitCode 1", async () => {
+  process.exitCode = undefined;
+  await assert.doesNotReject(() => runConfigureCommand([]));
+  assert.equal(process.exitCode, 1);
+  process.exitCode = undefined;
+});
+
+test("configure aplica schema e salva a URL — comando seguinte sem --database-url usa a config salva", async () => {
+  process.exitCode = undefined;
+  const dir = mkdtempSync(join(tmpdir(), "herald-cli-configure-test-"));
+  const configPath = join(dir, "config.json");
+
+  await runConfigureCommand(["--database-url", databaseUrl], { configPath });
+  assert.equal(process.exitCode, undefined);
+  assert.equal(await readSavedDatabaseUrl(configPath), databaseUrl);
+});
 
 test("comando desconhecido nao lanca e seta exitCode 1", async () => {
   process.exitCode = undefined;

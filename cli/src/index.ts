@@ -5,7 +5,8 @@ import { listOutposts } from "./commands/outpost-list.js";
 import { removeOutpost } from "./commands/outpost-remove.js";
 import { inspectOutpost } from "./commands/outpost-inspect.js";
 import { upsertEnvVars } from "./env-file.js";
-import { resolveDatabaseUrl } from "./db.js";
+import { resolveDatabaseUrl, provisionDatabase } from "./db.js";
+import { saveDatabaseUrl } from "./config.js";
 import { assertSecureServerUrl } from "./security.js";
 
 function parseFlags(argv: string[]): Record<string, string> {
@@ -23,13 +24,17 @@ function parseFlags(argv: string[]): Record<string, string> {
 
 function printHelp(): void {
   console.log(`Uso:
-  herald outpost init    --database-url <url> --server-url <url> [--name <nome>] [--allow-insecure-http]
-  herald outpost create  --database-url <url> [--name <nome>]
-  herald outpost ls      --database-url <url>
-  herald outpost rm      <id> --database-url <url>
-  herald outpost inspect <id> --database-url <url>
+  herald configure        --database-url <url>
+  herald outpost init     [--database-url <url>] --server-url <url> [--name <nome>] [--allow-insecure-http]
+  herald outpost create   [--database-url <url>] [--name <nome>]
+  herald outpost ls       [--database-url <url>]
+  herald outpost rm       <id> [--database-url <url>]
+  herald outpost inspect  <id> [--database-url <url>]
   herald init
 
+  configure        roda uma vez, na instalação: aplica o schema no banco e salva a URL
+                   em ~/.herald/config.json — comandos "outpost ..." seguintes não
+                   precisam mais de --database-url
   outpost init     cria um novo Outpost direto no banco E grava/atualiza .env de uma vez
                    (tipo "docker run" — cria e configura junto)
   outpost create   só cria o Outpost, imprime id/name/key (pra colar em outro lugar
@@ -39,8 +44,9 @@ function printHelp(): void {
   outpost inspect  mostra detalhes + o último snapshot de métricas recebido
   init             pergunta a URL do Server + uma key já existente, grava/atualiza .env
 
-  --database-url   connection string do Postgres (ou export DATABASE_URL=...) — usado só
-                   pelo CLI, pra criar/listar/revogar/inspecionar Outposts direto no banco
+  --database-url   connection string do Postgres — só é obrigatório em "herald configure";
+                   depois disso é opcional em todo o resto (fallback: flag > DATABASE_URL
+                   no ambiente > URL salva por "herald configure")
   --server-url     endereço HTTP do processo @herald/server (só em "outpost init", vai
                    pro .env — é o que o Gateway usa em runtime pra empurrar métricas, nunca
                    toca o banco)
@@ -49,11 +55,32 @@ function printHelp(): void {
                           outra camada (VPN/rede privada), nunca na internet pública`);
 }
 
+export async function runConfigureCommand(
+  argv: string[],
+  deps: { configPath?: string } = {}
+): Promise<void> {
+  const flags = parseFlags(argv);
+  if (!flags["database-url"]) {
+    console.error("Faltou --database-url");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    await provisionDatabase(flags["database-url"]);
+    await saveDatabaseUrl(flags["database-url"], deps.configPath);
+    console.log("Banco configurado (schema aplicado) e URL salva.");
+    console.log("Comandos `herald outpost ...` seguintes não precisam mais de --database-url.");
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  }
+}
+
 export async function runOutpostCreateCommand(argv: string[]): Promise<void> {
   const flags = parseFlags(argv);
   let databaseUrl: string;
   try {
-    databaseUrl = resolveDatabaseUrl(flags);
+    databaseUrl = await resolveDatabaseUrl(flags);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -77,7 +104,7 @@ export async function runOutpostInitCommand(
   const flags = parseFlags(argv);
   let databaseUrl: string;
   try {
-    databaseUrl = resolveDatabaseUrl(flags);
+    databaseUrl = await resolveDatabaseUrl(flags);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -111,7 +138,7 @@ export async function runOutpostLsCommand(argv: string[]): Promise<void> {
   const flags = parseFlags(argv);
   let databaseUrl: string;
   try {
-    databaseUrl = resolveDatabaseUrl(flags);
+    databaseUrl = await resolveDatabaseUrl(flags);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -137,7 +164,7 @@ export async function runOutpostRmCommand(argv: string[]): Promise<void> {
   const flags = parseFlags(flagArgs);
   let databaseUrl: string;
   try {
-    databaseUrl = resolveDatabaseUrl(flags);
+    databaseUrl = await resolveDatabaseUrl(flags);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -162,7 +189,7 @@ export async function runOutpostInspectCommand(argv: string[]): Promise<void> {
   const flags = parseFlags(flagArgs);
   let databaseUrl: string;
   try {
-    databaseUrl = resolveDatabaseUrl(flags);
+    databaseUrl = await resolveDatabaseUrl(flags);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -185,6 +212,7 @@ export async function runOutpostInspectCommand(argv: string[]): Promise<void> {
 export async function runCli(argv: string[]): Promise<void> {
   const [command, sub, ...rest] = argv;
 
+  if (command === "configure") return runConfigureCommand(argv.slice(1));
   if (command === "init") return runInit();
   if (command === "outpost" && sub === "init") return runOutpostInitCommand(rest);
   if (command === "outpost" && sub === "create") return runOutpostCreateCommand(rest);

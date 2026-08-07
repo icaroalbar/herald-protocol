@@ -39,37 +39,42 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 
    A partir daqui, `herald` funciona de qualquer pasta do sistema — sem `node dist/bin.js`.
 
-2. Crie um Outpost (a identidade da sua aplicação) e já configure o `.env` local num
+2. Configure o CLI **uma vez só** — aplica o schema no banco e salva a URL em
+   `~/.herald/config.json`, pra não precisar passar `--database-url` em todo comando
+   depois:
+
+   ```bash
+   herald configure --database-url postgres://herald:herald@localhost:5432/herald_server
+   # Banco configurado (schema aplicado) e URL salva.
+   ```
+
+3. Crie um Outpost (a identidade da sua aplicação) e já configure o `.env` local num
    comando só — tipo `docker run`, cria e configura junto. Não precisa de nenhum processo
-   HTTP rodando pra isso, só do Postgres do passo 0:
+   HTTP rodando pra isso, só do Postgres já configurado no passo 2:
 
    ```bash
-   herald outpost init \
-     --database-url postgres://herald:herald@localhost:5432/herald_server \
-     --server-url http://localhost:4100 \
-     --name meu-app
+   herald outpost init --server-url http://localhost:4100 --name meu-app
    ```
 
-   Isso cria o Outpost direto no banco (rodando a migration sozinho, se ainda não tiver
-   rodado) **e** grava `HERALD_SERVER_URL`/`HERALD_OUTPOST_KEY` no `.env` do diretório
-   atual — rode dentro da pasta da sua aplicação. Se preferir criar e configurar em
-   máquinas/pastas diferentes (ex: copiar a key manualmente pra outro servidor), use os
-   dois passos separados:
+   Isso cria o Outpost direto no banco **e** grava `HERALD_SERVER_URL`/
+   `HERALD_OUTPOST_KEY` no `.env` do diretório atual — rode dentro da pasta da sua
+   aplicação. Se preferir criar e configurar em máquinas/pastas diferentes (ex: copiar a
+   key manualmente pra outro servidor), use os dois passos separados:
 
    ```bash
-   herald outpost create --database-url postgres://herald:herald@localhost:5432/herald_server --name meu-app  # imprime a key
-   herald init                                                                                                 # pergunta URL + key, grava .env
+   herald outpost create --name meu-app  # imprime a key
+   herald init                           # pergunta URL + key, grava .env
    ```
 
-3. Suba o processo `@herald/server` (terminal 2) — é a única peça que precisa estar no ar
-   pra métricas chegarem de verdade; provisionar Outposts (passo 2) não depende dele:
+4. Suba o processo `@herald/server` (terminal 2) — é a única peça que precisa estar no ar
+   pra métricas chegarem de verdade; provisionar Outposts (passo 3) não depende dele:
 
    ```bash
    cd server && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
    # Herald Server rodando em http://localhost:4100
    ```
 
-4. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
+5. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via
    `node --env-file=.env` exige **Node ≥20.6**, acima do `engines: >=18` declarado nos
    pacotes; se estiver em Node 18/19, carregue as 2 variáveis manualmente):
 
@@ -90,13 +95,14 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    nenhuma chamada a infraestrutura da Herald — o Server que gera e valida a Outpost key
    é o mesmo que você está rodando.
 
-5. Acompanhe os Outposts pela linha de comando — sem tela, tudo via CLI, sempre com
-   `--database-url` (não `--server-url` — o CLI fala direto com o banco):
+6. Acompanhe os Outposts pela linha de comando — sem tela, tudo via CLI. Depois do
+   `herald configure` do passo 2, nenhum desses precisa de `--database-url` (só se quiser
+   apontar pra outro banco só naquela chamada específica):
 
    ```bash
-   herald outpost ls --database-url postgres://herald:herald@localhost:5432/herald_server
-   herald outpost inspect <id> --database-url postgres://herald:herald@localhost:5432/herald_server  # detalhe + último report
-   herald outpost rm <id> --database-url postgres://herald:herald@localhost:5432/herald_server        # revoga — reports em cascata, push com a key antiga passa a 401
+   herald outpost ls
+   herald outpost inspect <id>  # detalhe + último report
+   herald outpost rm <id>       # revoga — reports em cascata, push com a key antiga passa a 401
    ```
 
 > `@herald/dashboard` (UI web com gráficos) continua existindo, separado, pro caso de uso
