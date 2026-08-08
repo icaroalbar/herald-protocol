@@ -29,12 +29,12 @@ test("a chave em texto puro nunca fica no banco — só key_hash/key_prefix", as
   assert.ok(!rows[0].key_hash.includes(result.key));
 });
 
-test("list() retorna sem keyPrefix leak de outros campos sensíveis (só id/name/keyPrefix/createdAt/lastSeenAt)", async () => {
+test("list() retorna sem keyPrefix leak de outros campos sensíveis (só id/name/keyPrefix/createdAt/lastSeenAt/active)", async () => {
   await store.create("teste-list");
   const list = await store.list();
   const found = list.find((o) => o.name === "teste-list");
   assert.ok(found);
-  assert.deepEqual(Object.keys(found).sort(), ["createdAt", "id", "keyPrefix", "lastSeenAt", "name"]);
+  assert.deepEqual(Object.keys(found).sort(), ["active", "createdAt", "id", "keyPrefix", "lastSeenAt", "name"]);
 });
 
 test("get() retorna o outpost por id; null se não existe", async () => {
@@ -42,6 +42,26 @@ test("get() retorna o outpost por id; null se não existe", async () => {
   const found = await store.get(created.id);
   assert.equal(found?.name, "teste-get");
   assert.equal(await store.get("000000000000"), null);
+});
+
+test("create() nasce active por padrão", async () => {
+  const created = await store.create();
+  const found = await store.get(created.id);
+  assert.equal(found?.active, true);
+});
+
+test("setActive(id, false) para; setActive(id, true) retoma", async () => {
+  const created = await store.create();
+
+  assert.equal(await store.setActive(created.id, false), true);
+  assert.equal((await store.get(created.id))?.active, false);
+
+  assert.equal(await store.setActive(created.id, true), true);
+  assert.equal((await store.get(created.id))?.active, true);
+});
+
+test("setActive() de id desconhecido retorna false", async () => {
+  assert.equal(await store.setActive("ffffffffffff", false), false);
 });
 
 test("findIdByKey com chave correta retorna o id; errada ou desconhecida retorna null", async () => {

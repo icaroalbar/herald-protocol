@@ -97,11 +97,11 @@ DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm run build
 
 | Rota | Descrição |
 |---|---|
-| `POST /api/outposts/reports` | Push de métricas, autenticado via `Authorization: Bearer <key>` |
+| `POST /api/outposts/reports` | Push de métricas, autenticado via `Authorization: Bearer <key>`. Retorna `401` (key errada/desconhecida) ou `403 {error: "outpost_stopped"}` (key válida, mas o Outpost foi pausado via `herald outpost stop`) |
 
-Criar/listar/revogar/inspecionar Outpost não são mais rotas HTTP — são chamadas via
-`@herald/cli` (`herald outpost create/ls/rm/inspect --database-url ...`), que importa este
-pacote como biblioteca e fala direto com Postgres.
+Criar/listar/revogar/inspecionar/pausar/retomar Outpost não são mais rotas HTTP — são
+chamadas via `@herald/cli` (`herald outpost create/ls/rm/inspect/stop/start
+--database-url ...`), que importa este pacote como biblioteca e fala direto com Postgres.
 
 ## Biblioteca (`@herald/server`)
 

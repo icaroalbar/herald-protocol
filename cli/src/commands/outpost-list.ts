@@ -5,6 +5,8 @@ export interface OutpostSummary {
   name: string;
   createdAt: string;
   lastSeenAt: string | null;
+  /** false = pausado via "outpost stop" — push rejeitado (403) até "outpost start". */
+  active: boolean;
   /** Requests sem identificação Herald (source="none" no SDK, provável navegador
    * humano) — bucket "unknown:unknown" de requestsByAgent no snapshot mais recente. */
   humanRequests: number;
@@ -46,6 +48,7 @@ export async function listOutposts(options: OutpostListOptions): Promise<Outpost
           name: o.name,
           createdAt: o.createdAt,
           lastSeenAt: o.lastSeenAt,
+          active: o.active,
           humanRequests: human,
           agentRequests: agent,
         };

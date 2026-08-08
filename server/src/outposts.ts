@@ -49,6 +49,9 @@ export interface OutpostRecordPublic {
   keyPrefix: string;
   createdAt: string;
   lastSeenAt: string | null;
+  /** false = "outpost stop" (docker-style pause) — push de métricas rejeitado (403) até
+   * "outpost start". Diferente de remove(): stop é reversível, revoga nada. */
+  active: boolean;
 }
 
 export interface CreateOutpostResult {
@@ -65,6 +68,7 @@ interface OutpostRow {
   key_prefix: string;
   created_at: Date;
   last_seen_at: Date | null;
+  active: boolean;
 }
 
 function toPublic(row: OutpostRow): OutpostRecordPublic {
@@ -74,6 +78,7 @@ function toPublic(row: OutpostRow): OutpostRecordPublic {
     keyPrefix: row.key_prefix,
     createdAt: row.created_at.toISOString(),
     lastSeenAt: row.last_seen_at ? row.last_seen_at.toISOString() : null,
+    active: row.active,
   };
 }
 
@@ -112,14 +117,14 @@ export class PgOutpostStore {
 
   async list(): Promise<OutpostRecordPublic[]> {
     const { rows } = await this.pool.query<OutpostRow>(
-      `SELECT id, name, key_prefix, created_at, last_seen_at FROM outposts ORDER BY created_at ASC`
+      `SELECT id, name, key_prefix, created_at, last_seen_at, active FROM outposts ORDER BY created_at ASC`
     );
     return rows.map(toPublic);
   }
 
   async get(id: string): Promise<OutpostRecordPublic | null> {
     const { rows } = await this.pool.query<OutpostRow>(
-      `SELECT id, name, key_prefix, created_at, last_seen_at FROM outposts WHERE id = $1`,
+      `SELECT id, name, key_prefix, created_at, last_seen_at, active FROM outposts WHERE id = $1`,
       [id]
     );
     return rows.length ? toPublic(rows[0]) : null;
@@ -142,6 +147,13 @@ export class PgOutpostStore {
 
   async remove(id: string): Promise<boolean> {
     const { rowCount } = await this.pool.query(`DELETE FROM outposts WHERE id = $1`, [id]);
+    return (rowCount ?? 0) > 0;
+  }
+
+  /** true = "outpost start", false = "outpost stop" — pausa reversível, ao contrário de
+   * remove() (revoga a key e cascateia os reports). Retorna false se o id não existe. */
+  async setActive(id: string, active: boolean): Promise<boolean> {
+    const { rowCount } = await this.pool.query(`UPDATE outposts SET active = $2 WHERE id = $1`, [id, active]);
     return (rowCount ?? 0) > 0;
   }
 }

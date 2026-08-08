@@ -102,7 +102,10 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    ```bash
    herald outpost ls
    herald outpost inspect <id>  # detalhe + último report
-   herald outpost rm <id>       # revoga — reports em cascata, push com a key antiga passa a 401
+   herald outpost stop <id>     # pausa reversível (tipo "docker stop") — push passa a 403
+   herald outpost start <id>    # retoma — push volta a ser aceito
+   herald outpost rm <id>       # revoga PRA SEMPRE (irreversível, diferente de stop) —
+                                 # reports em cascata, push com a key antiga passa a 401
    ```
 
 > `@herald/dashboard` (UI web com gráficos) continua existindo, separado, pro caso de uso

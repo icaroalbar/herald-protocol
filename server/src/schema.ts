@@ -11,8 +11,14 @@ CREATE TABLE IF NOT EXISTS outposts (
   key_hash      TEXT NOT NULL UNIQUE,
   key_prefix    TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  last_seen_at  TIMESTAMPTZ
+  last_seen_at  TIMESTAMPTZ,
+  active        BOOLEAN NOT NULL DEFAULT true
 );
+
+-- CREATE TABLE IF NOT EXISTS não adiciona coluna em tabela já existente — ALTER ... IF
+-- NOT EXISTS cobre quem já rodou o schema antes da coluna "active" existir (idempotente
+-- igual o resto, sem framework de migração).
+ALTER TABLE outposts ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS outpost_reports (
   id            BIGSERIAL PRIMARY KEY,

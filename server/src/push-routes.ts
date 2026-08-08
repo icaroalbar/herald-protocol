@@ -28,6 +28,11 @@ export function createPushRouter(store: PgOutpostStore, reportsStore: PgReportsS
     const outpostId = await store.findIdByKey(token);
     if (!outpostId) return res.status(401).json({ error: "unauthorized" });
 
+    // "outpost stop" (docker-style pausa reversível) — key continua válida (401 seria
+    // enganoso, sugeriria key errada/revogada), mas o push é rejeitado até "outpost start".
+    const outpost = await store.get(outpostId);
+    if (!outpost?.active) return res.status(403).json({ error: "outpost_stopped" });
+
     if (typeof req.body?.snapshot !== "object" || req.body.snapshot === null) {
       return res.status(400).json({ error: "invalid_snapshot" });
     }

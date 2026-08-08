@@ -13,6 +13,8 @@ import {
   runOutpostCreateCommand,
   runOutpostInitCommand,
   runOutpostLsCommand,
+  runOutpostStopCommand,
+  runOutpostStartCommand,
   runOutpostRmCommand,
   runOutpostInspectCommand,
 } from "./index.js";
@@ -129,6 +131,28 @@ test("outpost ls sem --database-url nao lanca, seta exitCode 1", async () => {
 test("outpost ls com --database-url nao seta exitCode", async () => {
   process.exitCode = undefined;
   await runOutpostLsCommand(["--database-url", databaseUrl]);
+  assert.equal(process.exitCode, undefined);
+});
+
+test("outpost stop sem id ou sem --database-url nao lanca, seta exitCode 1", async () => {
+  process.exitCode = undefined;
+  await assert.doesNotReject(() => runOutpostStopCommand([]));
+  assert.equal(process.exitCode, 1);
+  process.exitCode = undefined;
+
+  await assert.doesNotReject(() => runOutpostStopCommand(["naoexiste1234"]));
+  assert.equal(process.exitCode, 1);
+  process.exitCode = undefined;
+});
+
+test("outpost stop com id + --database-url para e nao seta exitCode em sucesso; outpost start retoma", async () => {
+  process.exitCode = undefined;
+  const created = await createOutpost({ databaseUrl, name: "stop-alvo" });
+
+  await runOutpostStopCommand([created.id, "--database-url", databaseUrl]);
+  assert.equal(process.exitCode, undefined);
+
+  await runOutpostStartCommand([created.id, "--database-url", databaseUrl]);
   assert.equal(process.exitCode, undefined);
 });
 

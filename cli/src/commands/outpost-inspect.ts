@@ -6,6 +6,8 @@ export interface OutpostDetail {
   keyPrefix: string;
   createdAt: string;
   lastSeenAt: string | null;
+  /** false = pausado via "outpost stop" — push rejeitado (403) até "outpost start". */
+  active: boolean;
   latestReport: { reportedAt: string; snapshot: unknown } | null;
 }
 

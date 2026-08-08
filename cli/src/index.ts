@@ -4,6 +4,8 @@ import { createOutpost } from "./commands/outpost-create.js";
 import { listOutposts } from "./commands/outpost-list.js";
 import { removeOutpost } from "./commands/outpost-remove.js";
 import { inspectOutpost } from "./commands/outpost-inspect.js";
+import { stopOutpost } from "./commands/outpost-stop.js";
+import { startOutpost } from "./commands/outpost-start.js";
 import { upsertEnvVars } from "./env-file.js";
 import { resolveDatabaseUrl, provisionDatabase } from "./db.js";
 import { saveDatabaseUrl } from "./config.js";
@@ -29,6 +31,8 @@ function printHelp(): void {
   herald outpost init     [--database-url <url>] --server-url <url> [--name <nome>] [--allow-insecure-http]
   herald outpost create   [--database-url <url>] [--name <nome>]
   herald outpost ls       [--database-url <url>]
+  herald outpost stop     <id> [--database-url <url>]
+  herald outpost start    <id> [--database-url <url>]
   herald outpost rm       <id> [--database-url <url>]
   herald outpost inspect  <id> [--database-url <url>]
   herald init
@@ -41,7 +45,11 @@ function printHelp(): void {
   outpost create   só cria o Outpost, imprime id/name/key (pra colar em outro lugar
                    manualmente, ou copiar a key pra outra máquina)
   outpost ls       lista os Outposts cadastrados
-  outpost rm       remove/revoga um Outpost (a key dele para de funcionar)
+  outpost stop     pausa um Outpost (tipo "docker stop") — key continua existindo, push
+                   passa a ser rejeitado (403) até "outpost start". Reversível
+  outpost start    retoma um Outpost pausado (tipo "docker start") — push volta a ser aceito
+  outpost rm       remove/revoga um Outpost pra sempre (a key dele para de funcionar,
+                   histórico de reports é apagado — irreversível, diferente de "stop")
   outpost inspect  mostra detalhes + o último snapshot de métricas recebido
   init             pergunta a URL do Server + uma key já existente, grava/atualiza .env
 
@@ -163,14 +171,66 @@ export async function runOutpostLsCommand(argv: string[]): Promise<void> {
     }
     const idW = Math.max(12, ...outposts.map((o) => o.id.length)) + 2;
     const nameW = Math.max(20, ...outposts.map((o) => o.name.length)) + 2;
+    const statusW = 9;
     console.log(
-      `${"ID".padEnd(idW)}${"NOME".padEnd(nameW)}${"HUMANO".padStart(8)}  ${"AGENTE".padStart(8)}  VISTO`
+      `${"ID".padEnd(idW)}${"NOME".padEnd(nameW)}${"STATUS".padEnd(statusW)}${"HUMANO".padStart(8)}  ${"AGENTE".padStart(8)}  VISTO`
     );
     for (const o of outposts) {
+      const status = o.active ? "active" : "stopped";
       console.log(
-        `${o.id.padEnd(idW)}${o.name.padEnd(nameW)}${String(o.humanRequests).padStart(8)}  ${String(o.agentRequests).padStart(8)}  ${o.lastSeenAt ?? "nunca"}`
+        `${o.id.padEnd(idW)}${o.name.padEnd(nameW)}${status.padEnd(statusW)}${String(o.humanRequests).padStart(8)}  ${String(o.agentRequests).padStart(8)}  ${o.lastSeenAt ?? "nunca"}`
       );
     }
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  }
+}
+
+export async function runOutpostStopCommand(argv: string[]): Promise<void> {
+  const [id, ...flagArgs] = argv;
+  const flags = parseFlags(flagArgs);
+  let databaseUrl: string;
+  try {
+    databaseUrl = await resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  if (!id) {
+    console.error("Uso: herald outpost stop <id> --database-url <url>");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    await stopOutpost(id, { databaseUrl });
+    console.log(`Outpost ${id} parado.`);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  }
+}
+
+export async function runOutpostStartCommand(argv: string[]): Promise<void> {
+  const [id, ...flagArgs] = argv;
+  const flags = parseFlags(flagArgs);
+  let databaseUrl: string;
+  try {
+    databaseUrl = await resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  if (!id) {
+    console.error("Uso: herald outpost start <id> --database-url <url>");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    await startOutpost(id, { databaseUrl });
+    console.log(`Outpost ${id} retomado.`);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -235,6 +295,8 @@ export async function runCli(argv: string[]): Promise<void> {
   if (command === "outpost" && sub === "init") return runOutpostInitCommand(rest);
   if (command === "outpost" && sub === "create") return runOutpostCreateCommand(rest);
   if (command === "outpost" && sub === "ls") return runOutpostLsCommand(rest);
+  if (command === "outpost" && sub === "stop") return runOutpostStopCommand(rest);
+  if (command === "outpost" && sub === "start") return runOutpostStartCommand(rest);
   if (command === "outpost" && sub === "rm") return runOutpostRmCommand(rest);
   if (command === "outpost" && sub === "inspect") return runOutpostInspectCommand(rest);
   if (!command || command === "-h" || command === "--help") return printHelp();

@@ -56,3 +56,15 @@ test("POST /api/outposts/reports sem Authorization retorna 401", async () => {
   const res = await request(app).post("/api/outposts/reports").send({ snapshot: snapshotOf("bot/1.0") });
   assert.equal(res.status, 401);
 });
+
+test("POST /api/outposts/reports de Outpost parado (setActive false) retorna 403 e não grava", async () => {
+  const { id, key } = await store.create();
+  await store.setActive(id, false);
+
+  const res = await request(app)
+    .post("/api/outposts/reports")
+    .set("Authorization", `Bearer ${key}`)
+    .send({ snapshot: snapshotOf("bot/1.0") });
+  assert.equal(res.status, 403);
+  assert.equal(await reportsStore.latest(id), null);
+});
