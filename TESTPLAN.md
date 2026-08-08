@@ -1,7 +1,9 @@
 # Herald Protocol — Plano de Testes
 
-> Cobre os 4 pacotes da implementação de referência: `@herald/sdk`, `@herald/gateway`,
-> `@herald/dashboard`, `@herald/poc`. Complementa (não substitui) [`poc/README.md`](./poc/README.md),
+> Cobre os 7 pacotes testados da implementação de referência: `@herald/sdk`,
+> `@herald/gateway`, `@herald/dashboard`, `@herald/server`, `@herald/cli`,
+> `@herald/prometheus`, `@herald/poc` (`@herald/docs` não tem testes automatizados — é o
+> site de documentação). Complementa (não substitui) [`poc/README.md`](./poc/README.md),
 > que descreve a validação e2e manual já existente.
 
 ## 1. Estratégia
@@ -13,8 +15,11 @@ Pirâmide de testes adotada, do mais barato/rápido ao mais caro/lento:
 | Unitário | Funções puras do `@herald/sdk` (identificação, negociação, Policy Engine, assinatura, discovery, métricas) | `node:test` + `node:assert/strict` (nativo, zero dependência nova) | Implementado (este documento) |
 | Integração | Pipeline do `@herald/gateway` como um todo (Express + SDK), sem servidor HTTP real | `node:test` + `supertest` | Implementado |
 | Integração | Agregação `/api/metrics` do `@herald/dashboard` (múltiplos Gateways, um fora do ar) | `node:test` + `supertest`, `fetch` mockado | Implementado |
+| Integração | `PgOutpostStore`/`PgReportsStore`/rota de push do `@herald/server`, contra Postgres real | `node:test` + `supertest`, banco efêmero por arquivo de teste | Implementado |
+| Integração | Comandos do `@herald/cli` (`configure`/`outpost create/ls/inspect/stop/start/rm`), contra Postgres real via `@herald/server` | `node:test`, banco efêmero por arquivo de teste | Implementado |
+| Unitário | `PrometheusMetricsCollector` do `@herald/prometheus` — contadores/histograma por `agent_type`, sem `agentId` como label | `node:test`, `Registry` do próprio `prom-client` (sem infra externa) | Implementado |
 | E2E / smoke | Servidor real + requisições HTTP reais, os 5 pontos do projeto + verificação de assinatura | Script dedicado (`poc/src/demo.ts`) | Implementado (Fase PoC) |
-| CI | Build + testes dos 4 pacotes + smoke e2e da PoC a cada push/PR | GitHub Actions (`.github/workflows/ci.yml`) | Implementado |
+| CI | Build + testes dos 6 pacotes testáveis + smoke e2e da PoC a cada push/PR, com Postgres real (`services:`) | GitHub Actions (`.github/workflows/ci.yml`) | Implementado |
 | Manual/exploratório | Dashboard (visual), casos de borda não cobertos por automação | Checklist (§6) | Parcial |
 
 Escolha de `node:test` em vez de Jest/Vitest: os pacotes já seguem a filosofia de dependências
@@ -55,11 +60,59 @@ demais, Gateway respondendo com status HTTP de erro, resposta sem Gateways confi
 serving estático de `public/`. Não cobre o polling do frontend (`app.js`) — isso permanece
 no checklist manual (§6), já que é comportamento de navegador, não de servidor.
 
+### `@herald/server` — prioridade alta (implementado)
+
+Control plane opcional (Outpost), backed by Postgres — `PgOutpostStore`, `PgReportsStore`
+e a rota HTTP de push (`push-routes.ts`) testados com `node:test` contra um banco
+Postgres **real e efêmero** (`test-db.ts` cria um banco novo por arquivo de teste,
+`herald_test_<random>`, roda a migration, derruba no final — mesmo espírito de isolamento
+que `fs.mkdtempSync` nos testes de arquivo, sem mock de driver SQL). Cobre: geração de
+id/nome/chave, unicidade sob `create()` concorrente, chave em texto puro nunca persistida,
+prefix matching (`findByIdPrefix`, incluindo escaping de `%`/`_`/`\` do LIKE), pausa
+reversível (`setActive`/`active`), `ON DELETE CASCADE` de reports ao revogar, round-trip
+de snapshot `JSONB`, e a rota de push: `401` (sem/errada Authorization), `403
+outpost_stopped` (key válida, Outpost pausado), `202` no caminho feliz com `lastSeenAt`
+atualizado (fire-and-forget, checado com espera de 500ms — ver nota no próprio teste sobre
+por que 100ms não bastava sob carga concorrente da suíte inteira). Requer
+`docker compose up -d` deste pacote (ou o serviço `postgres:` do CI) antes de rodar.
+
+### `@herald/cli` — prioridade alta (implementado)
+
+Comandos testados via chamada direta das funções exportadas de `index.ts`
+(`runOutpostCreateCommand` etc.), sem subprocess — mais rápido, cobertura igual. Cada
+comando de banco (`configure`, `outpost create/ls/inspect/stop/start/rm`) testado contra
+Postgres real via `createTestDatabase()` de `@herald/server` (deep-import de
+`@herald/server/dist/test-db.js` — helper de teste, não parte da superfície pública do
+pacote). Cobre: fallback de resolução de `--database-url` (flag > `DATABASE_URL` env >
+config salva por `herald configure`, com isolamento de ambos numa mesma suíte —
+`withoutDatabaseUrlEnv()` limpa temporariamente tanto a env var quanto um eventual
+`~/.herald/config.json` real da máquina, sem apagar o que já existia lá), prompt
+interativo do `configure` sem `--database-url` (mesmo padrão de `herald init`), prefix
+matching de id (exato, único, ambíguo — lista os candidatos), `.env` gerado por
+`outpost init`/`init` (docker-style, um comando só), e o par `stop`/`start` (reversível,
+diferente de `rm`). Requer o mesmo Postgres do `@herald/server` (é `file:../server`).
+
+### `@herald/prometheus` — prioridade média (implementado)
+
+`PrometheusMetricsCollector` testado contra o próprio `Registry` do `prom-client` —
+nenhuma infraestrutura externa (nem Postgres, nem rede), roda em milissegundos. Cobre:
+contadores/histograma por `agent_type` pra cada método de `MetricsCollector`
+(`incrementRequest`/`recordPolicyDecision`/`recordFormat`/`recordError`/`recordLatency`),
+confirmação explícita de que `agentId` **nunca** aparece como label (regressão pro
+anti-padrão de cardinalidade sem limite — ver ARCHITECTURE.md §4.4), `contentType` no
+formato de texto Prometheus, e isolamento entre instâncias (`Registry` próprio por
+`PrometheusMetricsCollector`, não o registry global do `prom-client` — duas instâncias no
+mesmo processo não vazam contadores uma pra outra). Integração com `@herald/gateway` (rota
+`GET /metrics` reconhecendo `renderPrometheus()` via duck-typing) testada em
+`gateway.test.ts`, não neste pacote — evita esse pacote depender de `express`.
+
 ### `@herald/poc` — coberto pelo script de demo (e2e), não por testes unitários
 
 `poc/src/demo.ts` já cobre os 5 pontos do projeto mais verificação de assinatura e o fluxo
-de monetização x402 (10 verificações no total). Não faz sentido duplicar como testes
-unitários — é deliberadamente um teste de sistema.
+de monetização x402 (11 verificações no total, incluindo rate limiting — item 3b). Não faz
+sentido duplicar como testes unitários — é deliberadamente um teste de sistema. Ganhou
+`HERALD_METRICS=prometheus` opt-in (default continua `InMemoryMetricsCollector`/JSON) pra
+exercitar `@herald/prometheus` manualmente sem mudar o comportamento do script de demo.
 
 ## 3. Matriz de casos de teste — `@herald/sdk`
 
@@ -177,6 +230,14 @@ Express, que é justamente o que o nível e2e existe para cobrir.
   400 KB sem sinal de ReDoS (crescimento linear, não exponencial). Tamanho de header em si já
   é limitado pelo servidor HTTP (`--max-http-header-size` do Node, default 16 KiB) antes de
   chegar nos parsers.
+- **Retenção de `outpost_reports`** — não implementado. Tabela é append-only, sem
+  poda/TTL (ver ARCHITECTURE.md §5.3). Validado manualmente que o caminho de push
+  aguenta volume moderado (400 requisições concorrentes contra a PoC, mix
+  humano/agente/rate-limitado, via `Gateway` real → `@herald/server` → Postgres — sem
+  erro, sem degradação de latência perceptível, contagens batendo exatamente no
+  `herald outpost ls`/`inspect` depois), mas isso não é um teste de carga formal tipo
+  `gateway/scripts/load-test.mjs` (não mede crescimento do banco ao longo do tempo/uso
+  sustentado) nem substitui decidir uma política de poda antes de uso em produção real.
 
 ## 6. Checklist manual (Dashboard e exploratório)
 
@@ -190,30 +251,44 @@ Express, que é justamente o que o nível e2e existe para cobrir.
 
 ## 7. Como rodar
 
-Localmente, pacote por pacote (ordem importa — Gateway/Dashboard/PoC dependem do `dist/`
-do SDK já compilado, via `file:../sdk`):
+Localmente, pacote por pacote (ordem importa — cada pacote depende do `dist/` já
+compilado do anterior via `file:../<pacote>`, não é workspace npm). `@herald/server` e
+`@herald/cli` precisam de Postgres real (`docker compose up -d` dentro de `server/`):
 
 ```bash
-cd sdk       && npm install && npm run build && npm test
-cd ../gateway && npm install && npm run build && npm test
+cd server && docker compose up -d   # Postgres — necessário antes de server/ e cli/
+
+cd sdk        && npm install && npm run build && npm test
+cd ../gateway  && npm install && npm run build && npm test
 cd ../dashboard && npm install && npm run build && npm test
-cd ../poc     && npm install && npm run build
+cd ../server    && npm install && npm run build \
+                && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm test
+cd ../cli        && npm install && npm run build \
+                && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm test
+cd ../prometheus  && npm install && npm run build && npm test
+cd ../poc          && npm install && npm run build
 # em um terminal: npm start   |   em outro: npm run demo
 ```
 
-Em CI (`.github/workflows/ci.yml`), os quatro pacotes são buildados/testados nessa mesma
-ordem a cada push/PR para `main`, incluindo o smoke e2e da PoC (servidor sobe em background,
-`npm run demo` roda contra ele).
+Em CI (`.github/workflows/ci.yml`), os 6 pacotes testáveis são buildados/testados nessa
+mesma ordem a cada push/PR para `main` — `server`/`cli` contra um Postgres real via
+`services:` nativo do GitHub Actions (mesmo `DATABASE_URL` acima) — incluindo o smoke e2e
+da PoC (servidor sobe em background, `npm run demo` roda contra ele). A ordem não é
+arbitrária: `cli/` depende de `@herald/server` (`file:../server`) e `poc/` depende de
+`@herald/prometheus` (`file:../prometheus`) — cada um precisa do `dist/` do outro já
+buildado antes do próprio `npm install`.
 
 ## 8. Critério de "pronto"
 
 Este plano considera a Fase de Testes minimamente cumprida quando:
 
 1. Os testes unitários do `@herald/sdk` (§3) passam limpos (`npm test`).
-2. Os testes de integração do `@herald/gateway` e `@herald/dashboard` passam limpos (`npm test`).
-3. O script e2e da PoC (§4) passa 100% (`npm run demo` → N/N).
-4. O workflow de CI passa verde a cada push.
-5. As lacunas do §5 estão registradas (não escondidas) — este documento cumpre esse papel.
+2. Os testes de integração do `@herald/gateway`, `@herald/dashboard`, `@herald/server` e
+   `@herald/cli` passam limpos (`npm test`).
+3. Os testes unitários do `@herald/prometheus` passam limpos (`npm test`).
+4. O script e2e da PoC (§4) passa 100% (`npm run demo` → N/N).
+5. O workflow de CI passa verde a cada push.
+6. As lacunas do §5 estão registradas (não escondidas) — este documento cumpre esse papel.
 
 Cobertura de código (%) não é usada como critério aqui — os módulos testados são pequenos
 e a cobertura por *caso de uso normativo do RFC* (tabelas acima) é mais informativa que uma
