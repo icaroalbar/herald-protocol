@@ -1,7 +1,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { createTestDatabase } from "@herald/server/dist/test-db.js";
-import { PgReportsStore } from "@herald/server";
+import { createTestDatabase } from "@heraldserver/server/dist/test-db.js";
+import { PgReportsStore } from "@heraldserver/server";
 import { createOutpost } from "./outpost-create.js";
 import { pruneReports } from "./outpost-prune.js";
 

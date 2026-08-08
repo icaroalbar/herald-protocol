@@ -1,7 +1,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { createTestDatabase } from "@herald/server/dist/test-db.js";
-import { PgOutpostStore } from "@herald/server";
+import { createTestDatabase } from "@heraldserver/server/dist/test-db.js";
+import { PgOutpostStore } from "@heraldserver/server";
 import { resolveOutpost } from "./outpost-id.js";
 
 const { pool, dropDatabase } = await createTestDatabase();

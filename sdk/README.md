@@ -1,4 +1,4 @@
-# @herald/sdk
+# @heraldserver/sdk
 
 SDK Node.js de referência para o **Herald Protocol**. Implementa identificação de agentes,
 negociação de capacidades, um Policy Engine puro e coleta de métricas — conforme
@@ -15,7 +15,7 @@ diretamente por quem quer integrar o Herald Protocol sem adotar o middleware com
 ## Instalação
 
 ```bash
-npm install @herald/sdk
+npm install @heraldserver/sdk
 ```
 
 ## Uso básico
@@ -23,7 +23,7 @@ npm install @herald/sdk
 ### 1. Identificar o agente de uma requisição
 
 ```ts
-import { identifyAgent } from "@herald/sdk";
+import { identifyAgent } from "@heraldserver/sdk";
 
 const agent = identifyAgent({
   headers: {
@@ -45,7 +45,7 @@ chaves). Ver seção 6 abaixo.
 ### 2. Negociar formato
 
 ```ts
-import { parseAcceptCapabilities, negotiateFormat } from "@herald/sdk";
+import { parseAcceptCapabilities, negotiateFormat } from "@heraldserver/sdk";
 
 const requested = parseAcceptCapabilities("structured-json;q=1.0, markdown;q=0.8, html;q=0.3");
 const { format, matched } = negotiateFormat(requested, ["structured-json", "html"]);
@@ -55,7 +55,7 @@ const { format, matched } = negotiateFormat(requested, ["structured-json", "html
 ### 3. Avaliar política de acesso
 
 ```ts
-import { PolicyEngine, formatPolicyDecisionHeader } from "@herald/sdk";
+import { PolicyEngine, formatPolicyDecisionHeader } from "@heraldserver/sdk";
 
 const policyEngine = new PolicyEngine({
   default: { read: "allow", train: "deny" },
@@ -76,7 +76,7 @@ response.setHeader("Herald-Policy-Decision", formatPolicyDecisionHeader(decision
 ### 4. Gerar o documento de descoberta (`/.well-known/herald`)
 
 ```ts
-import { buildDiscoveryDocument } from "@herald/sdk";
+import { buildDiscoveryDocument } from "@heraldserver/sdk";
 
 const doc = buildDiscoveryDocument({
   origin: "https://example.com",
@@ -94,7 +94,7 @@ app.get("/.well-known/herald", (req, res) => res.json(doc));
 ### 5. Coletar métricas
 
 ```ts
-import { InMemoryMetricsCollector } from "@herald/sdk";
+import { InMemoryMetricsCollector } from "@heraldserver/sdk";
 
 const metrics = new InMemoryMetricsCollector();
 
@@ -118,7 +118,7 @@ agente como `verified: true`, assine no lado do agente e verifique no lado da or
 `signRequest`/`verifyRequestSignature`:
 
 ```ts
-import { generateSigningKeyPair, signRequest, verifyRequestSignature } from "@herald/sdk";
+import { generateSigningKeyPair, signRequest, verifyRequestSignature } from "@heraldserver/sdk";
 
 // Provisionamento (uma vez, fora do hot path)
 const { publicKeyPem, privateKeyPem } = generateSigningKeyPair("ed25519");
@@ -145,7 +145,7 @@ if (agent.source === "herald-header") {
 }
 ```
 
-O `@herald/gateway` já integra esse fluxo automaticamente via a opção `signatureVerification`
+O `@heraldserver/gateway` já integra esse fluxo automaticamente via a opção `signatureVerification`
 (ver README do Gateway) — a maioria dos usuários não precisa chamar `verifyRequestSignature`
 diretamente.
 
@@ -160,13 +160,13 @@ e um ponto de extensão (`PaymentVerifier`) — quem faz a liquidação de verda
 configura o Gateway:
 
 ```ts
-import { createDemoPaymentVerifier, buildPaymentRequiredHeader, parsePaymentSignatureHeader } from "@herald/sdk";
+import { createDemoPaymentVerifier, buildPaymentRequiredHeader, parsePaymentSignatureHeader } from "@heraldserver/sdk";
 
 // createDemoPaymentVerifier() NÃO liquida nada de verdade — só para PoC/testes locais.
 // Em produção, implemente PaymentVerifier chamando um facilitator x402 real.
 ```
 
-O `@herald/gateway` já integra esse fluxo automaticamente via a opção `monetization` (ver
+O `@heraldserver/gateway` já integra esse fluxo automaticamente via a opção `monetization` (ver
 README do Gateway) — a maioria dos usuários não precisa chamar essas funções diretamente.
 
 ## Exemplo completo (middleware Express manual)
@@ -181,7 +181,7 @@ import {
   formatPolicyDecisionHeader,
   buildDiscoveryDocument,
   InMemoryMetricsCollector,
-} from "@herald/sdk";
+} from "@heraldserver/sdk";
 
 const app = express();
 const metrics = new InMemoryMetricsCollector();
@@ -227,7 +227,7 @@ app.use((req, res, next) => {
 app.listen(3000);
 ```
 
-Este é exatamente o comportamento que o pacote `@herald/gateway` (Fase 3) empacota como
+Este é exatamente o comportamento que o pacote `@heraldserver/gateway` (Fase 3) empacota como
 middleware pronto para uso — este exemplo mostra o que ele faz por baixo dos panos.
 
 ## Build

@@ -3,7 +3,7 @@
 > Item 2 do ICA-27 (revisão da Fase 1, revisitada em 2026-08-03). Detalha o que o
 > [RFC-0001](./RFC-0001.md) §8.2 deixa como recomendação genérica ("acesso requer aprovação
 > fora de banda") sem especificar um mecanismo concreto — este documento descreve a
-> implementação de referência (`@herald/sdk`, módulo `monetization.ts`).
+> implementação de referência (`@heraldserver/sdk`, módulo `monetization.ts`).
 
 ## 1. Por que x402
 

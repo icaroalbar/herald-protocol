@@ -1,4 +1,4 @@
-import type { RateLimit } from "@herald/sdk";
+import type { RateLimit } from "@heraldserver/sdk";
 
 interface WindowState {
   count: number;

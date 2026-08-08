@@ -137,7 +137,7 @@ export class PgOutpostStore {
   }
 
   /** Prefix matching tipo `docker` (id completo tem 12 hex chars, usuário pode digitar só
-   * os primeiros — ver resolveOutpost() em @herald/cli). Escapa `%`/`_`/`\` do prefixo:
+   * os primeiros — ver resolveOutpost() em @heraldserver/cli). Escapa `%`/`_`/`\` do prefixo:
    * ids são sempre hex puro por construção, mas um prefixo digitado à mão poderia conter
    * caracteres especiais de LIKE por acidente — não é injeção (query parametrizada), só
    * evitaria correspondência incorreta. */

@@ -1,10 +1,10 @@
-# @herald/gateway
+# @heraldserver/gateway
 
 Gateway de referência para o **Herald Protocol** — um middleware Express que aplica
 identificação de agentes, negociação de capacidades, Policy Engine e rate limiting a
 qualquer aplicação existente, sem exigir reescrita de rotas.
 
-Depende de [`@herald/sdk`](../sdk) para toda a lógica de protocolo; o Gateway apenas
+Depende de [`@heraldserver/sdk`](../sdk) para toda a lógica de protocolo; o Gateway apenas
 orquestra o pipeline por requisição e expõe os endpoints padrão (`/.well-known/herald`,
 `/metrics`).
 
@@ -16,7 +16,7 @@ cd sdk && npm install && npm run build   # o Gateway depende do build do SDK
 cd ../gateway && npm install && npm run build
 ```
 
-`@herald/sdk` é referenciado via `file:../sdk` no `package.json` — não precisa estar
+`@heraldserver/sdk` é referenciado via `file:../sdk` no `package.json` — não precisa estar
 publicado no npm para desenvolvimento local.
 
 ## Pipeline por requisição
@@ -43,7 +43,7 @@ normativos de [HEADERS.md §6](../HEADERS.md#6-casos-de-borda-normativos).
 
 ```ts
 import express from "express";
-import { createHeraldGateway } from "@herald/gateway";
+import { createHeraldGateway } from "@heraldserver/gateway";
 
 const app = express();
 
@@ -94,7 +94,7 @@ Quando não há formatter registrado, a aplicação decide como responder — ma
 consultar o que o Gateway já resolveu:
 
 ```ts
-import { getHeraldContext } from "@herald/gateway";
+import { getHeraldContext } from "@heraldserver/gateway";
 
 app.get("/artigos/:slug", (req, res) => {
   const ctx = getHeraldContext(req);
@@ -127,7 +127,7 @@ const gateway = createHeraldGateway({
 ```
 
 Requisições de agentes (`Herald-Agent-Id` presente) com headers `Signature-Input`/`Signature`
-válidos (assinados com `signRequest` do `@herald/sdk`) têm `agent.verified` promovido para
+válidos (assinados com `signRequest` do `@heraldserver/sdk`) têm `agent.verified` promovido para
 `true` antes da avaliação de política — o que faz `unverifiedOverride` diferenciar de fato
 os dois casos. Toda resposta a um agente identificado também ganha o header de diagnóstico
 `X-Herald-Debug-Agent-Verified: true|false` (não normativo, só para observabilidade).
@@ -139,7 +139,7 @@ sempre). Para habilitar o fluxo de referência x402 (ver [MONETIZATION.md](../MO
 passe `monetization`:
 
 ```ts
-import { createDemoPaymentVerifier } from "@herald/sdk";
+import { createDemoPaymentVerifier } from "@heraldserver/sdk";
 
 const gateway = createHeraldGateway({
   discovery: { /* ... */ },
@@ -172,7 +172,7 @@ Redis) implementando a mesma interface `check(key, limit): number | null`.
 
 ## Métricas
 
-`gateway.metrics` é um `InMemoryMetricsCollector` do `@herald/sdk` por padrão. A rota
+`gateway.metrics` é um `InMemoryMetricsCollector` do `@heraldserver/sdk` por padrão. A rota
 `GET /metrics` expõe `metrics.snapshot()` como JSON — consumido pelo Dashboard Agent
 Analytics (Fase 4). Para produção, passe seu próprio `MetricsCollector` (ex: adaptador
 `prom-client`) via `createHeraldGateway({ metrics: meuColetor, ... })`.

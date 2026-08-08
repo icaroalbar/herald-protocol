@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import type { Capability } from "@herald/sdk";
+import type { Capability } from "@heraldserver/sdk";
 
 export type FormatterFn = (req: Request) => unknown | Promise<unknown>;
 

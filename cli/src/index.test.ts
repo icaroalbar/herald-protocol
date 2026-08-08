@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createTestDatabase } from "@herald/server/dist/test-db.js";
+import { createTestDatabase } from "@heraldserver/server/dist/test-db.js";
 import { createOutpost } from "./commands/outpost-create.js";
 import { defaultConfigPath, readSavedDatabaseUrl } from "./config.js";
 import {

@@ -14,7 +14,7 @@
  * Uso: em um terminal, `npm start`; em outro, `npm run demo`.
  */
 
-import { signRequest, generateSigningKeyPair } from "@herald/sdk";
+import { signRequest, generateSigningKeyPair } from "@heraldserver/sdk";
 
 const BASE_URL = process.env.HERALD_POC_URL ?? "http://localhost:4811";
 

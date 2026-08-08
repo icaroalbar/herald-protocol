@@ -1,4 +1,4 @@
-import type { PgOutpostStore, OutpostRecordPublic } from "@herald/server";
+import type { PgOutpostStore, OutpostRecordPublic } from "@heraldserver/server";
 
 /** Prefix matching tipo `docker` — usuário digita só os primeiros hex chars do id (12 no
  * total), não precisa colar o id inteiro. Tenta match exato primeiro (caminho comum:

@@ -1,5 +1,5 @@
 {
-  "name": "@herald/gateway",
+  "name": "@heraldserver/gateway",
   "version": "0.1.0",
   "description": "Gateway de referência (middleware Express) para o Herald Protocol.",
   "license": "MIT",
@@ -19,7 +19,7 @@
     "load-test": "node --expose-gc scripts/load-test.mjs"
   },
   "dependencies": {
-    "@herald/sdk": "file:../sdk",
+    "@heraldserver/sdk": "file:../sdk",
     "express": "^4.19.0"
   },
   "devDependencies": {

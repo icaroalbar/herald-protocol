@@ -12,7 +12,7 @@ function extractBearerToken(req: Request): string | null {
 
 /**
  * Única rota HTTP deste pacote — o resto (criar/listar/revogar/inspecionar Outpost) virou
- * operação direta de PgOutpostStore/PgReportsStore, chamada pelo @herald/cli sem passar
+ * operação direta de PgOutpostStore/PgReportsStore, chamada pelo @heraldserver/cli sem passar
  * por HTTP. Essa rota continua existindo porque quem empurra métricas é o Gateway/app
  * monitorada, que não deve ter credencial de Postgres — só a Outpost key, via Bearer.
  */

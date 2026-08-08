@@ -1,4 +1,4 @@
-# @herald/server
+# @heraldserver/server
 
 Servidor de controle do Herald Protocol — gestão de Outposts e histórico de métricas,
 backed by Postgres. **Sem UI** (ver [`@herald/dashboard`](../dashboard), congelado desde
@@ -7,11 +7,11 @@ separado, pro caso de uso original de fazer poll de `/metrics` de Gateways indiv
 
 Duas formas de falar com este pacote, cada uma pra um consumidor diferente:
 
-- **Biblioteca** (`@herald/server`, import direto) — `@herald/cli` usa isso pra
+- **Biblioteca** (`@heraldserver/server`, import direto) — `@heraldserver/cli` usa isso pra
   criar/listar/revogar/inspecionar Outposts direto no Postgres, sem HTTP no meio.
   `PgOutpostStore`, `PgReportsStore`, `createPool`, `migrate`, `SCHEMA_SQL` (`src/lib.ts`).
 - **HTTP** (processo `npm start`, `POST /api/outposts/reports`) — o Gateway/app monitorada
-  usa isso pra empurrar métricas (`@herald/sdk`'s `createOutpostReporter`,
+  usa isso pra empurrar métricas (`@heraldserver/sdk`'s `createOutpostReporter`,
   `HERALD_SERVER_URL`). É a única rota HTTP que existe — a app monitorada nunca precisa
   (nem deve) ter credencial de Postgres, só a Outpost key.
 
@@ -66,7 +66,7 @@ docker compose up -d prometheus   # sobe junto com o Postgres, porta 9090
 ```
 
 `prometheus.yml` já vem configurado pra fazer scrape de `http://host.docker.internal:4811/metrics`
-(o `/metrics` de um app usando `@herald/gateway`, ex: `poc/`) — endereço portável,
+(o `/metrics` de um app usando `@heraldserver/gateway`, ex: `poc/`) — endereço portável,
 funciona em Docker Desktop (Mac/Windows) e em Linux com dockerd nativo
 (`extra_hosts: host.docker.internal:host-gateway` no `docker-compose.yml`).
 
@@ -101,13 +101,13 @@ DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm run build
 | `POST /api/outposts/reports` | Push de métricas, autenticado via `Authorization: Bearer <key>`. Retorna `401` (key errada/desconhecida) ou `403 {error: "outpost_stopped"}` (key válida, mas o Outpost foi pausado via `herald outpost stop`) |
 
 Criar/listar/revogar/inspecionar/pausar/retomar/podar Outpost não são mais rotas HTTP —
-são chamadas via `@herald/cli` (`herald outpost create/ls/rm/inspect/stop/start/prune
+são chamadas via `@heraldserver/cli` (`herald outpost create/ls/rm/inspect/stop/start/prune
 --database-url ...`), que importa este pacote como biblioteca e fala direto com Postgres.
 
-## Biblioteca (`@herald/server`)
+## Biblioteca (`@heraldserver/server`)
 
 ```ts
-import { createPool, migrate, PgOutpostStore, PgReportsStore } from "@herald/server";
+import { createPool, migrate, PgOutpostStore, PgReportsStore } from "@heraldserver/server";
 
 const pool = createPool(databaseUrl);
 await migrate(pool); // idempotente, seguro de rodar toda vez

@@ -1,5 +1,5 @@
 import { Registry, Counter, Histogram, collectDefaultMetrics } from "prom-client";
-import type { AgentContext, Capability, MetricsCollector, PolicyDecision } from "@herald/sdk";
+import type { AgentContext, Capability, MetricsCollector, PolicyDecision } from "@heraldserver/sdk";
 
 export interface PrometheusRenderResult {
   contentType: string;
@@ -9,8 +9,8 @@ export interface PrometheusRenderResult {
 /**
  * MetricsCollector do Herald Protocol backed by prom-client — mesma interface que
  * InMemoryMetricsCollector (sdk/src/metrics.ts), reconhecido pelo GET /metrics de
- * @herald/gateway via duck-typing em renderPrometheus() (ver PrometheusRenderableMetrics
- * em gateway/src/gateway.ts) — não precisa @herald/sdk nem @herald/gateway dependerem de
+ * @heraldserver/gateway via duck-typing em renderPrometheus() (ver PrometheusRenderableMetrics
+ * em gateway/src/gateway.ts) — não precisa @heraldserver/sdk nem @heraldserver/gateway dependerem de
  * prom-client, só quem opta por este pacote.
  *
  * Diferença deliberada do InMemoryMetricsCollector: não usa agentId como label de série.
@@ -85,7 +85,7 @@ export class PrometheusMetricsCollector implements MetricsCollector {
     this.latencyMs.observe({ agent_type: agent.agentType }, ms);
   }
 
-  /** Reconhecido por GET /metrics de @herald/gateway (duck-typing, ver gateway.ts). */
+  /** Reconhecido por GET /metrics de @heraldserver/gateway (duck-typing, ver gateway.ts). */
   async renderPrometheus(): Promise<PrometheusRenderResult> {
     return { contentType: this.registry.contentType, body: await this.registry.metrics() };
   }

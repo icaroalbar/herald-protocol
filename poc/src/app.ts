@@ -1,11 +1,11 @@
 import express, { type Express } from "express";
-import { createHeraldGateway, getHeraldContext, type HeraldGateway } from "@herald/gateway";
-import { generateSigningKeyPair, createDemoPaymentVerifier, type PaymentRequirements } from "@herald/sdk";
-import { PrometheusMetricsCollector } from "@herald/prometheus";
+import { createHeraldGateway, getHeraldContext, type HeraldGateway } from "@heraldserver/gateway";
+import { generateSigningKeyPair, createDemoPaymentVerifier, type PaymentRequirements } from "@heraldserver/sdk";
+import { PrometheusMetricsCollector } from "@heraldserver/prometheus";
 import { articles, findArticle } from "./data.js";
 
 /**
- * App de exemplo que integra @herald/sdk (via @herald/gateway) sobre uma aplicação Express
+ * App de exemplo que integra @heraldserver/sdk (via @heraldserver/gateway) sobre uma aplicação Express
  * "comum" com 3 artigos. Valida na prática os 5 pontos exigidos da PoC — ver
  * src/demo.ts para o script que exercita cada um deles.
  */
@@ -35,7 +35,7 @@ const PREMIUM_ARTICLE_REQUIREMENTS: PaymentRequirements = {
 export function createPocApp(): { app: Express; gateway: HeraldGateway } {
   const gateway = createHeraldGateway({
     // Default continua InMemoryMetricsCollector (JSON em /metrics, zero dependência
-    // extra) — HERALD_METRICS=prometheus troca pro coletor de @herald/prometheus
+    // extra) — HERALD_METRICS=prometheus troca pro coletor de @heraldserver/prometheus
     // (texto Prometheus em /metrics, ver server/prometheus.yml pro scrape config).
     ...(process.env.HERALD_METRICS === "prometheus" ? { metrics: new PrometheusMetricsCollector() } : {}),
     discovery: {

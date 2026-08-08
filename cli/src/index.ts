@@ -60,7 +60,7 @@ function printHelp(): void {
   --database-url   connection string do Postgres — só é obrigatório em "herald configure";
                    depois disso é opcional em todo o resto (fallback: flag > DATABASE_URL
                    no ambiente > URL salva por "herald configure")
-  --server-url     endereço HTTP do processo @herald/server (só em "outpost init", vai
+  --server-url     endereço HTTP do processo @heraldserver/server (só em "outpost init", vai
                    pro .env — é o que o Gateway usa em runtime pra empurrar métricas, nunca
                    toca o banco)
   --older-than-days   janela de retenção pro "outpost prune" — obrigatório, sem default

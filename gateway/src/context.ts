@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import type { AgentContext, Capability } from "@herald/sdk";
+import type { AgentContext, Capability } from "@heraldserver/sdk";
 
 export interface HeraldRequestContext {
   agent: AgentContext;

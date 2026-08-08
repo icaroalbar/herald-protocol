@@ -1,6 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { createTestDatabase } from "@herald/server/dist/test-db.js";
+import { createTestDatabase } from "@heraldserver/server/dist/test-db.js";
 import { createOutpost } from "./outpost-create.js";
 import { stopOutpost } from "./outpost-stop.js";
 import { listOutposts } from "./outpost-list.js";

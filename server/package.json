@@ -1,5 +1,5 @@
 {
-  "name": "@herald/server",
+  "name": "@heraldserver/server",
   "version": "0.1.0",
   "description": "Servidor de controle do Herald Protocol — gestão de Outposts e histórico de métricas, backed by Postgres. Sem UI (ver @herald/dashboard, congelado em ICA-34).",
   "license": "MIT",

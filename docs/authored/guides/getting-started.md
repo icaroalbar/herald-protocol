@@ -1,14 +1,14 @@
 # Começando
 
-Três formas de adotar o Herald Protocol, da mais rápida pra mais manual: CLI (`@herald/cli`,
+Três formas de adotar o Herald Protocol, da mais rápida pra mais manual: CLI (`@heraldserver/cli`,
 cria uma identidade — "Outpost" — e configura o Gateway pra você), Gateway direto
-(`@herald/gateway`, middleware Express, cobre o pipeline inteiro sem reescrever rotas), ou
-SDK cru (`@herald/sdk`, só o que você precisar).
+(`@heraldserver/gateway`, middleware Express, cobre o pipeline inteiro sem reescrever rotas), ou
+SDK cru (`@heraldserver/sdk`, só o que você precisar).
 
 ## Via CLI (mais rápido)
 
 > **Ainda não publicado no npm** — pra ter o comando `herald` disponível globalmente
-> hoje, use `npm link` (abaixo) em vez de `npm install -g @herald/cli`. Isso muda assim
+> hoje, use `npm link` (abaixo) em vez de `npm install -g @heraldserver/cli`. Isso muda assim
 > que o pacote for publicado — os comandos ficam idênticos.
 
 > **Requer Docker** — o control plane guarda Outposts e métricas em Postgres. Suba o banco
@@ -27,7 +27,7 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    ```
 
 1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina) —
-   `@herald/cli` depende de `@herald/server` (buildado localmente) pra falar direto com
+   `@heraldserver/cli` depende de `@heraldserver/server` (buildado localmente) pra falar direto com
    o Postgres:
 
    ```bash
@@ -66,7 +66,7 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    herald init                           # pergunta URL + key, grava .env
    ```
 
-4. Suba o processo `@herald/server` (terminal 2) — é a única peça que precisa estar no ar
+4. Suba o processo `@heraldserver/server` (terminal 2) — é a única peça que precisa estar no ar
    pra métricas chegarem de verdade; provisionar Outposts (passo 3) não depende dele:
 
    ```bash
@@ -113,7 +113,7 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 
 > `@herald/dashboard` (UI web com gráficos) continua existindo, separado, pro caso de uso
 > original de fazer *polling* das métricas de um Gateway individual em `/metrics` — ver
-> seção "Via Gateway" abaixo. Ele não fala com o `@herald/server`; são dois control planes
+> seção "Via Gateway" abaixo. Ele não fala com o `@heraldserver/server`; são dois control planes
 > independentes, cada um pro seu fluxo (polling vs. push de Outpost).
 
 ## Via Gateway (configuração manual)
@@ -125,7 +125,7 @@ cd ../gateway && npm install && npm run build
 
 ```ts
 import express from "express";
-import { createHeraldGateway } from "@herald/gateway";
+import { createHeraldGateway } from "@heraldserver/gateway";
 
 const app = express();
 
@@ -156,7 +156,7 @@ Para quem não usa Express ou quer só um pedaço do protocolo (ex: só negocia�
 formato, sem Policy Engine):
 
 ```ts
-import { identifyAgent, parseAcceptCapabilities, negotiateFormat } from "@herald/sdk";
+import { identifyAgent, parseAcceptCapabilities, negotiateFormat } from "@heraldserver/sdk";
 
 const agent = identifyAgent({ headers: req.headers });
 const requested = parseAcceptCapabilities(req.headers["herald-accept-capabilities"]);

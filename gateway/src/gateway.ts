@@ -21,15 +21,15 @@ import {
   type ResolvePublicKeyContext,
   createOutpostReporter,
   type OutpostReportingConfig,
-} from "@herald/sdk";
+} from "@heraldserver/sdk";
 import { FormatterRegistry } from "./formatters.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { setHeraldContext } from "./context.js";
 
 /**
  * Capacidade opcional, duck-typed — um MetricsCollector customizado pode servir GET
- * /metrics em formato de texto Prometheus implementando isso, sem @herald/gateway (ou
- * @herald/sdk) precisar depender de `prom-client` (ver @herald/prometheus, pacote
+ * /metrics em formato de texto Prometheus implementando isso, sem @heraldserver/gateway (ou
+ * @heraldserver/sdk) precisar depender de `prom-client` (ver @heraldserver/prometheus, pacote
  * opcional que implementa MetricsCollector + isto).
  */
 export interface PrometheusRenderableMetrics {
@@ -47,7 +47,7 @@ export interface SignatureVerificationConfig {
    * Resolve a chave pública (PEM) a partir do keyid declarado em Signature-Input. Um
    * resolver estático (ex: `(keyId) => meuMap.get(keyId)`) pode ignorar o segundo
    * parâmetro; para descoberta dinâmica via RFC-0002, plugue diretamente o retorno de
-   * `createAgentKeyResolver()` (`@herald/sdk`, módulo `agent-keys.ts`).
+   * `createAgentKeyResolver()` (`@heraldserver/sdk`, módulo `agent-keys.ts`).
    */
   resolvePublicKey: (
     keyId: string,

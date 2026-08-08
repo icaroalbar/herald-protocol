@@ -1,7 +1,7 @@
 {
   "name": "@herald/poc",
   "version": "0.1.0",
-  "description": "Prova de conceito do Herald Protocol — integra @herald/sdk e @herald/gateway sobre uma app Express de exemplo, com script de validação dos 5 pontos exigidos.",
+  "description": "Prova de conceito do Herald Protocol — integra @heraldserver/sdk e @heraldserver/gateway sobre uma app Express de exemplo, com script de validação dos 5 pontos exigidos.",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -11,9 +11,9 @@
     "demo": "node dist/demo.js"
   },
   "dependencies": {
-    "@herald/gateway": "file:../gateway",
-    "@herald/prometheus": "file:../prometheus",
-    "@herald/sdk": "file:../sdk",
+    "@heraldserver/gateway": "file:../gateway",
+    "@heraldserver/prometheus": "file:../prometheus",
+    "@heraldserver/sdk": "file:../sdk",
     "express": "^4.19.0"
   },
   "devDependencies": {

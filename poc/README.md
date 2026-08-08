@@ -1,7 +1,7 @@
 # @herald/poc
 
 Prova de conceito do **Herald Protocol** — uma app Express de exemplo (3 artigos) rodando
-atrás do [`@herald/gateway`](../gateway), com um script que valida contra o servidor real os
+atrás do [`@heraldserver/gateway`](../gateway), com um script que valida contra o servidor real os
 5 pontos exigidos pelo projeto:
 
 1. Identificação de agentes

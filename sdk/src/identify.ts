@@ -47,7 +47,7 @@ function isValidAgentType(value: string | undefined): value is AgentType {
  * é deliberadamente separada de verificação criptográfica (assíncrona, potencialmente
  * com I/O para resolver chaves). Para popular verified=true, use
  * `verifyRequestSignature()` de `./signature.js` e atualize o campo no AgentContext
- * retornado (ver ICA-27 / revisão da Fase 1, e README do @herald/gateway para o fluxo
+ * retornado (ver ICA-27 / revisão da Fase 1, e README do @heraldserver/gateway para o fluxo
  * completo já integrado no pipeline do Gateway).
  */
 export function identifyAgent(options: IdentifyOptions): AgentContext {

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import express, { type NextFunction, type Request, type Response } from "express";
 import request from "supertest";
-import { generateSigningKeyPair, signRequest, createDemoPaymentVerifier, type PaymentRequirements } from "@herald/sdk";
+import { generateSigningKeyPair, signRequest, createDemoPaymentVerifier, type PaymentRequirements } from "@heraldserver/sdk";
 import { createHeraldGateway, type HeraldGatewayConfig } from "./gateway.js";
 import { getHeraldContext } from "./context.js";
 

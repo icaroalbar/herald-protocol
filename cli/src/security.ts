@@ -3,7 +3,7 @@ export function isLoopbackHost(hostname: string): boolean {
 }
 
 /** Mesma checagem de sdk/src/reporting.ts (assertSecureServerUrl) — duplicada aqui de
- * propósito porque cli/ é um pacote leaf, sem dependência em @herald/sdk. Centralizada
+ * propósito porque cli/ é um pacote leaf, sem dependência em @heraldserver/sdk. Centralizada
  * neste módulo dentro do próprio pacote pra não duplicar de novo entre outpost-create.ts,
  * outpost-list.ts, outpost-remove.ts e outpost-inspect.ts. */
 export function assertSecureServerUrl(serverUrl: string, allowInsecureHttp?: boolean): void {

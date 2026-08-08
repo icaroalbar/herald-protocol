@@ -7,7 +7,7 @@ const { Pool, Client } = pg;
 export interface TestDb {
   pool: pg.Pool;
   /** Connection string deste banco efêmero — útil pra código que cria seu próprio Pool
-   * a partir de uma URL (ex: @herald/cli, que nunca recebe um Pool pronto). */
+   * a partir de uma URL (ex: @heraldserver/cli, que nunca recebe um Pool pronto). */
   databaseUrl: string;
   dropDatabase: () => Promise<void>;
 }

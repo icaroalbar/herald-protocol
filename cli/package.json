@@ -1,7 +1,7 @@
 {
-  "name": "@herald/cli",
+  "name": "@heraldserver/cli",
   "version": "0.1.0",
-  "description": "CLI de referência para provisionar um Herald Outpost e configurar @herald/gateway na sua aplicação.",
+  "description": "CLI de referência para provisionar um Herald Outpost e configurar @heraldserver/gateway na sua aplicação.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,7 +21,7 @@
     "test": "bash -c 'shopt -s globstar; node --test dist/**/*.test.js'"
   },
   "dependencies": {
-    "@herald/server": "file:../server",
+    "@heraldserver/server": "file:../server",
     "pg": "^8.11.0"
   },
   "devDependencies": {

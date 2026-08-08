@@ -16,7 +16,7 @@ Concretamente:
 - **Spec** (RFC-0001.md, HEADERS.md, SIGNATURES.md, INTEROP.md, well-known-herald.schema.json)
   — licença de conteúdo permissiva (CC-BY 4.0). Qualquer um pode implementar o protocolo
   descrito sem depender de aprovação ou pagamento ao autor.
-- **Implementação de referência** (`@herald/sdk`, `@herald/gateway`, `@herald/dashboard`,
+- **Implementação de referência** (`@heraldserver/sdk`, `@heraldserver/gateway`, `@herald/dashboard`,
   `@herald/poc`) — MIT, como já declarado nos quatro `package.json`. Um arquivo `LICENSE`
   na raiz do repositório formaliza isso (adicionado nesta mesma revisão).
 - **Camada comercial** (ainda não construída) — hosting gerenciado do Gateway/Dashboard e
@@ -46,7 +46,7 @@ tração do protocolo: fechar os itens abertos do ICA-27 (monetização/x402 em 
 mais adiante, a Fase 5 (comunidade e especificação aberta) já registrada no Linear.
 
 A camada comercial (hosting + premium) vira prioridade quando houver sinal real de adoção
-externa — alguém rodando `@herald/gateway` em produção e perguntando "vocês oferecem
+externa — alguém rodando `@heraldserver/gateway` em produção e perguntando "vocês oferecem
 hosting?" é o gatilho, não uma data no calendário.
 
 ## 4. Guardrail para quando houver tração

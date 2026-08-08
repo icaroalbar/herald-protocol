@@ -17,8 +17,8 @@ só existe se você optar por ele).
 
 | Componente | Papel | Onde roda |
 |---|---|---|
-| **SDK Node.js** (`@herald/sdk`) | Biblioteca que implementa identificação, negociação e emissão de métricas; usada por quem constrói o Gateway ou integra o Herald Protocol direto na aplicação | No processo da aplicação origem |
-| **Gateway** (`@herald/gateway`) | Middleware/proxy de referência que usa o SDK para aplicar o Herald Protocol em qualquer app Express/HTTP sem alterar o código da aplicação | Na borda da aplicação origem (middleware) ou como proxy reverso dedicado |
+| **SDK Node.js** (`@heraldserver/sdk`) | Biblioteca que implementa identificação, negociação e emissão de métricas; usada por quem constrói o Gateway ou integra o Herald Protocol direto na aplicação | No processo da aplicação origem |
+| **Gateway** (`@heraldserver/gateway`) | Middleware/proxy de referência que usa o SDK para aplicar o Herald Protocol em qualquer app Express/HTTP sem alterar o código da aplicação | Na borda da aplicação origem (middleware) ou como proxy reverso dedicado |
 | **Policy Engine** | Avalia políticas (intents × agente × recurso) e retorna decisões (`allow`/`deny`/`ask`) consumidas pelo Gateway | Embutido no Gateway (biblioteca) ou como serviço separado para deployments multi-origem |
 
 Esses três componentes mapeiam diretamente aos 5 pilares definidos no projeto Herald
@@ -30,9 +30,9 @@ abaixo — "self-hosting zero infra" continua verdadeiro pro núcleo do protocol
 
 | Componente | Papel | Onde roda |
 |---|---|---|
-| **Server** (`@herald/server`) | Control plane backed by Postgres — dupla função: **biblioteca** (`PgOutpostStore`/`PgReportsStore`, usada pelo CLI pra falar direto com o banco) e **processo HTTP mínimo** (uma rota só, `POST /api/outposts/reports`, recebe push de métricas autenticado por Outpost key) | Biblioteca: import direto pelo CLI. Processo: standalone, atrás de HTTPS em produção |
-| **CLI** (`@herald/cli`, comando `herald`) | Provisiona/gerencia Outposts direto no Postgres (`create`/`ls`/`inspect`/`stop`/`start`/`rm`, prefix matching tipo `docker`) — nunca passa por HTTP pra isso. `outpost init`/`init` geram o `.env` (`HERALD_SERVER_URL`+`HERALD_OUTPOST_KEY`) que a app monitorada usa em runtime | Terminal do operador |
-| **Prometheus Adapter** (`@herald/prometheus`) | `MetricsCollector` alternativo ao in-memory, backed by `prom-client` — expõe `GET /metrics` do Gateway em formato de texto Prometheus/OpenMetrics em vez de JSON. Agrega só por `agent_type` (evita cardinalidade sem limite de `agentId`) | No processo da aplicação origem, junto com o Gateway (pacote opcional) |
+| **Server** (`@heraldserver/server`) | Control plane backed by Postgres — dupla função: **biblioteca** (`PgOutpostStore`/`PgReportsStore`, usada pelo CLI pra falar direto com o banco) e **processo HTTP mínimo** (uma rota só, `POST /api/outposts/reports`, recebe push de métricas autenticado por Outpost key) | Biblioteca: import direto pelo CLI. Processo: standalone, atrás de HTTPS em produção |
+| **CLI** (`@heraldserver/cli`, comando `herald`) | Provisiona/gerencia Outposts direto no Postgres (`create`/`ls`/`inspect`/`stop`/`start`/`rm`, prefix matching tipo `docker`) — nunca passa por HTTP pra isso. `outpost init`/`init` geram o `.env` (`HERALD_SERVER_URL`+`HERALD_OUTPOST_KEY`) que a app monitorada usa em runtime | Terminal do operador |
+| **Prometheus Adapter** (`@heraldserver/prometheus`) | `MetricsCollector` alternativo ao in-memory, backed by `prom-client` — expõe `GET /metrics` do Gateway em formato de texto Prometheus/OpenMetrics em vez de JSON. Agrega só por `agent_type` (evita cardinalidade sem limite de `agentId`) | No processo da aplicação origem, junto com o Gateway (pacote opcional) |
 | **Dashboard (Agent Analytics)** — **congelado** | App web com gráficos que lê métricas via *polling* de `/metrics` de Gateways individuais. Congelado desde a decisão de priorizar CLI + Postgres sem UI — continua existindo e funcionando pro caso de uso original, mas não recebe desenvolvimento novo | Serviço separado, consome `/metrics` do(s) Gateway(s) via poll |
 
 Diferença central de modelo: Dashboard faz **poll** (puxa `/metrics` periodicamente,
@@ -87,7 +87,7 @@ flowchart LR
     end
 
     PG[(Postgres)]
-    SRV["@herald/server<br/>(processo HTTP mínimo,<br/>POST /api/outposts/reports)"]
+    SRV["@heraldserver/server<br/>(processo HTTP mínimo,<br/>POST /api/outposts/reports)"]
 
     CLI -->|"create/ls/inspect/<br/>stop/start/rm<br/>(direto, sem HTTP)"| PG
     GW2 --> REP
@@ -111,7 +111,7 @@ o outro precisa.
 - Seleção de capacidade/formato a partir da negociação (RFC-0001 §5.4).
 - Emissão de eventos de métrica (contadores, latência) via uma interface plugável
   (`MetricsCollector`) — `InMemoryMetricsCollector` (default, JSON) ou
-  `PrometheusMetricsCollector` de `@herald/prometheus` (opcional, texto Prometheus), sem
+  `PrometheusMetricsCollector` de `@heraldserver/prometheus` (opcional, texto Prometheus), sem
   mudar nenhum outro código do SDK/Gateway pra trocar.
 - Geração do documento de descoberta a partir de configuração declarativa.
 
@@ -120,12 +120,12 @@ o outro precisa.
   requisição.
 - Expõe `/.well-known/herald` e `/metrics` automaticamente — `/metrics` responde JSON
   (`InMemoryMetricsCollector` default) ou texto Prometheus (se `config.metrics` implementa
-  `renderPrometheus()`, duck-typed — ver `@herald/prometheus`), `501` pra qualquer outro
+  `renderPrometheus()`, duck-typed — ver `@heraldserver/prometheus`), `501` pra qualquer outro
   `MetricsCollector` customizado sem essa capacidade.
 - Aplica os headers de resposta (`Herald-Content-Format`, `Herald-Policy-Decision`, `Vary`).
 - Não força uma capacidade específica sobre a aplicação — delega a transformação de
   conteúdo (HTML → JSON estruturado) para adaptadores configuráveis pela aplicação.
-- Opcionalmente empurra o snapshot de métricas pra um `@herald/server` periodicamente
+- Opcionalmente empurra o snapshot de métricas pra um `@heraldserver/server` periodicamente
   (`config.reporting`, fluxo Outpost — ver §2.2), independente do que `/metrics` expõe.
 
 **Policy Engine**
@@ -134,7 +134,7 @@ o outro precisa.
 - Avaliação pura (sem I/O) para permitir uso em hot path com baixa latência.
 - Interface de configuração declarativa (JSON/YAML) e, futuramente, API de administração.
 
-**Server (`@herald/server`) — control plane opcional**
+**Server (`@heraldserver/server`) — control plane opcional**
 - Biblioteca (`PgOutpostStore`, `PgReportsStore`, `createPool`, `migrate`) — usada pelo
   CLI pra criar/listar/inspecionar/pausar/revogar Outposts direto no Postgres, sem HTTP.
 - Processo HTTP mínimo (`npm start`) — uma rota só, `POST /api/outposts/reports`,
@@ -144,7 +144,7 @@ o outro precisa.
   framework de migração — 2 tabelas (`outposts`, `outpost_reports`), aplicado a cada
   `migrate()` (chamado no boot do processo HTTP e em toda invocação do CLI).
 
-**CLI (`@herald/cli`, comando `herald`)**
+**CLI (`@heraldserver/cli`, comando `herald`)**
 - `herald configure` — roda uma vez, aplica o schema e salva `DATABASE_URL` em
   `~/.herald/config.json`; comandos seguintes não precisam mais de `--database-url`.
 - `herald outpost create/init/ls/inspect/stop/start/rm` — CRUD + pausa reversível direto
@@ -152,12 +152,12 @@ o outro precisa.
 - `herald init` — grava `.env` (`HERALD_SERVER_URL`+`HERALD_OUTPOST_KEY`) numa app já com
   Outpost criado, sem precisar rodar `create` de novo.
 
-**Prometheus Adapter (`@herald/prometheus`)**
+**Prometheus Adapter (`@heraldserver/prometheus`)**
 - `PrometheusMetricsCollector` — implementa a mesma interface `MetricsCollector` do SDK,
   backed by `prom-client`. Agrega só por `agent_type` (nunca `agentId` — cardinalidade sem
   limite é anti-padrão conhecido do Prometheus).
 - Reconhecido pelo `GET /metrics` do Gateway via duck-typing (`renderPrometheus()`), sem
-  `@herald/sdk`/`@herald/gateway` precisarem depender de `prom-client`.
+  `@heraldserver/sdk`/`@heraldserver/gateway` precisarem depender de `prom-client`.
 
 **Dashboard (Agent Analytics) — congelado**
 - Consome métricas expostas pelo Gateway via poll (`/metrics`, JSON —
@@ -262,7 +262,7 @@ mesma fonte de dados.
 
 A interface de métricas do SDK (`MetricsCollector`) é plugável desde o início. O default
 (`InMemoryMetricsCollector`, JSON) cobre a PoC e o caso simples sem infraestrutura extra.
-`@herald/prometheus` implementa a mesma interface com `prom-client` — pacote separado
+`@heraldserver/prometheus` implementa a mesma interface com `prom-client` — pacote separado
 (não dependência do SDK/Gateway), só instalado por quem opta por Prometheus. Agrega por
 `agent_type`, não por `agentId` — cardinalidade sem limite de `agentId` (uma série nova
 por bot/versão distinta observada) é anti-padrão conhecido do Prometheus.
@@ -278,10 +278,10 @@ requisição é suportada, mas não é o caminho padrão.
 O Dashboard original faz *polling* — precisa alcançar a rede de cada Gateway configurado
 (`HERALD_GATEWAYS`). Isso não funciona atrás de firewall corporativo outbound-only, um
 cenário real de deployment. O fluxo Outpost inverte: a app monitorada empurra métricas
-periodicamente pro `@herald/server` (`config.reporting` no Gateway,
+periodicamente pro `@heraldserver/server` (`config.reporting` no Gateway,
 `POST /api/outposts/reports`) — só precisa de conexão outbound, nenhuma porta inbound
 exposta na app monitorada. Trade-off: push não é "tempo real" (intervalo configurável,
-default 60s) e exige um processo `@herald/server` no ar continuamente pro dado chegar
+default 60s) e exige um processo `@heraldserver/server` no ar continuamente pro dado chegar
 (diferente das operações de CRUD do CLI, que não dependem dele — ver §4.7).
 
 ### 4.7 CLI fala direto com Postgres, não com o Server via HTTP
@@ -292,7 +292,7 @@ pausar/revogar um Outpost virou operação direta do CLI contra o Postgres
 (`--database-url`/`herald configure`), não mais HTTP. Motivo: são operações do operador
 humano, não da app monitorada — não precisam da mesma superfície de rede que o push de
 métricas precisa, e cada rota HTTP a mais é superfície de ataque que não se paga sem um
-consumidor real além do próprio CLI. O processo HTTP do `@herald/server` encolheu pra uma
+consumidor real além do próprio CLI. O processo HTTP do `@heraldserver/server` encolheu pra uma
 rota só (`POST /api/outposts/reports`), a única que serve um consumidor genuinamente
 remoto (a app monitorada, potencialmente numa rede diferente da do operador).
 
@@ -325,7 +325,7 @@ interface AgentContext {
 }
 ```
 
-### 5.3 Outpost e histórico de reports (Postgres, `@herald/server`)
+### 5.3 Outpost e histórico de reports (Postgres, `@heraldserver/server`)
 
 ```sql
 CREATE TABLE outposts (
@@ -358,11 +358,11 @@ TESTPLAN.md §5). `ON DELETE CASCADE` casa com a semântica de `herald outpost r
   hardcoded no motor de avaliação.
 - Formatadores de conteúdo são registrados pela aplicação (plugin pattern), permitindo
   suportar novos formatos (`streaming`, `graphql`) sem alterar o Gateway.
-- `MetricsCollector` é uma interface pequena (5 métodos) — `@herald/prometheus` é a prova
+- `MetricsCollector` é uma interface pequena (5 métodos) — `@heraldserver/prometheus` é a prova
   de que dá pra trocar a implementação sem tocar SDK/Gateway; qualquer outro backend
   (Datadog, CloudWatch, etc.) segue o mesmo padrão.
-- `@herald/server` é biblioteca antes de ser processo — `PgOutpostStore`/`PgReportsStore`
-  podem ser reusados por qualquer outra ferramenta administrativa além do `@herald/cli`
+- `@heraldserver/server` é biblioteca antes de ser processo — `PgOutpostStore`/`PgReportsStore`
+  podem ser reusados por qualquer outra ferramenta administrativa além do `@heraldserver/cli`
   (um script interno, uma automação de CI), sem precisar do processo HTTP no ar.
 
 ## 7. Deployment
@@ -378,8 +378,8 @@ Com control plane opcional (Outpost — CLI + Server + Postgres), ver §2.2 pro 
 completo. Peças que precisam ficar de pé continuamente em produção:
 
 - **Postgres**: dados de Outposts e histórico de reports. Nunca exposto publicamente —
-  só o processo `@herald/server` e o operador (via `herald configure`) o alcançam.
-- **`@herald/server` (processo HTTP)**: só precisa estar no ar quando quiser que métricas
+  só o processo `@heraldserver/server` e o operador (via `herald configure`) o alcançam.
+- **`@heraldserver/server` (processo HTTP)**: só precisa estar no ar quando quiser que métricas
   cheguem via push; provisionar/gerenciar Outposts via CLI não depende dele. Atrás de
   HTTPS obrigatório em produção (`assertSecureServerUrl` recusa HTTP fora de localhost,
   sem `allowInsecureHttp` explícito) — normalmente atrás de um reverse proxy com TLS.

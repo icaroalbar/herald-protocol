@@ -1,4 +1,4 @@
-import { createPool, migrate, PgOutpostStore, PgReportsStore } from "@herald/server";
+import { createPool, migrate, PgOutpostStore, PgReportsStore } from "@heraldserver/server";
 import { defaultConfigPath, readSavedDatabaseUrl } from "./config.js";
 
 /** Ordem: --database-url > DATABASE_URL (env) > config salva via `herald configure`.

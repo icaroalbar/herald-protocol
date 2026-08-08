@@ -36,7 +36,7 @@ export default defineConfig({
       {
         text: "Referência",
         items: [
-          { text: "SDK (@herald/sdk)", link: "/reference/sdk/README" },
+          { text: "SDK (@heraldserver/sdk)", link: "/reference/sdk/README" },
           { text: "API do Gateway", link: "/reference/gateway-api" },
         ],
       },

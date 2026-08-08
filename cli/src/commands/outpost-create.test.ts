@@ -1,8 +1,8 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 // Helper de teste, deep-import de propósito (não faz parte da superfície pública de
-// @herald/server — não deveria ir pro dist/lib.js).
-import { createTestDatabase } from "@herald/server/dist/test-db.js";
+// @heraldserver/server — não deveria ir pro dist/lib.js).
+import { createTestDatabase } from "@heraldserver/server/dist/test-db.js";
 import { createOutpost } from "./outpost-create.js";
 
 const { databaseUrl, dropDatabase } = await createTestDatabase();

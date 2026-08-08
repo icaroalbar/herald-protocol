@@ -2,7 +2,7 @@
 
 > Detalha normativamente o que o [RFC-0001](./RFC-0001.md) §4.4 deixa como recomendação
 > (SHOULD) sem especificar o mecanismo. Este documento descreve a implementação de
-> referência (`@herald/sdk`, módulo `signature.ts`) — um subconjunto prático da RFC 9421,
+> referência (`@heraldserver/sdk`, módulo `signature.ts`) — um subconjunto prático da RFC 9421,
 > não a especificação completa.
 
 ## 1. Por que isso existe
@@ -75,7 +75,7 @@ declarada, seguida da linha `@signature-params`, juntas por `\n` (sem `\n` final
    a requisição por conta disso — verified=false é um estado normal, não um erro)
 ```
 
-O `@herald/gateway` já executa os passos 4–5 automaticamente quando configurado com
+O `@heraldserver/gateway` já executa os passos 4–5 automaticamente quando configurado com
 `signatureVerification` (ver README do Gateway).
 
 ## 7. Expiração
@@ -96,7 +96,7 @@ criptográfica em si.
 - ~~Sem registro/descoberta de chave pública padronizado~~ — RESOLVIDO (2026-08-04,
   ICA-32): [RFC-0002](./RFC-0002-descoberta-chave-publica.md) (Draft) define um
   mecanismo opcional, aditivo, via header `Herald-Agent-Keys-Url` — implementação de
-  referência em `createAgentKeyResolver()` (`@herald/sdk`, módulo `agent-keys.ts`).
+  referência em `createAgentKeyResolver()` (`@heraldserver/sdk`, módulo `agent-keys.ts`).
   `resolvePublicKey` continua podendo ser um Map/tabela/serviço estático quando a
   descoberta dinâmica não é necessária; os dois modos coexistem (`resolvePublicKey`
   agora recebe um segundo parâmetro de contexto opcional de usar — ver
