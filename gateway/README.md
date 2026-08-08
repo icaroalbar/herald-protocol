@@ -211,4 +211,5 @@ gateway/
 
 ## Status
 
-Implementação de referência da Fase 3 do roadmap do Herald Protocol. Ainda não publicado no npm.
+Implementação de referência da Fase 3 do roadmap do Herald Protocol. Publicado no npm como
+[`@heraldserver/gateway`](https://www.npmjs.com/package/@heraldserver/gateway).

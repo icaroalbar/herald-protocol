@@ -7,10 +7,6 @@ SDK cru (`@heraldserver/sdk`, só o que você precisar).
 
 ## Via CLI (mais rápido)
 
-> **Ainda não publicado no npm** — pra ter o comando `herald` disponível globalmente
-> hoje, use `npm link` (abaixo) em vez de `npm install -g @heraldserver/cli`. Isso muda assim
-> que o pacote for publicado — os comandos ficam idênticos.
-
 > **Requer Docker** — o control plane guarda Outposts e métricas em Postgres. Suba o banco
 > antes de tudo, é o único pré-requisito de infra deste guia.
 
@@ -26,9 +22,15 @@ SDK cru (`@heraldserver/sdk`, só o que você precisar).
    cd server && docker compose up -d        # sobe Postgres, espera ficar saudável
    ```
 
-1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina) —
-   `@heraldserver/cli` depende de `@heraldserver/server` (buildado localmente) pra falar direto com
-   o Postgres:
+1. Instale o CLI globalmente (uma vez só, tipo `docker` sendo instalado na máquina):
+
+   ```bash
+   npm install -g @heraldserver/cli
+   ```
+
+   `herald` funciona de qualquer pasta do sistema a partir daí. Contribuindo no repo (ou
+   testando uma mudança local antes de publicar)? Builda os pacotes na ordem de
+   dependência e usa `npm link` no lugar do `npm install -g` acima:
 
    ```bash
    cd sdk && npm install && npm run build
@@ -36,8 +38,6 @@ SDK cru (`@heraldserver/sdk`, só o que você precisar).
    cd ../server && npm install && npm run build
    cd ../cli && npm install && npm run build && npm link
    ```
-
-   A partir daqui, `herald` funciona de qualquer pasta do sistema — sem `node dist/bin.js`.
 
 2. Configure o CLI **uma vez só** — aplica o schema no banco e salva a URL em
    `~/.herald/config.json`, pra não precisar passar `--database-url` em todo comando
@@ -119,8 +119,7 @@ SDK cru (`@heraldserver/sdk`, só o que você precisar).
 ## Via Gateway (configuração manual)
 
 ```bash
-cd sdk && npm install && npm run build
-cd ../gateway && npm install && npm run build
+npm install @heraldserver/gateway
 ```
 
 ```ts
@@ -154,6 +153,10 @@ envolvidos: ver [referência da API do Gateway](/reference/gateway-api) e o
 
 Para quem não usa Express ou quer só um pedaço do protocolo (ex: só negociação de
 formato, sem Policy Engine):
+
+```bash
+npm install @heraldserver/sdk
+```
 
 ```ts
 import { identifyAgent, parseAcceptCapabilities, negotiateFormat } from "@heraldserver/sdk";

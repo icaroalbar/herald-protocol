@@ -70,11 +70,12 @@ docker compose up -d prometheus   # sobe junto com o Postgres, porta 9090
 funciona em Docker Desktop (Mac/Windows) e em Linux com dockerd nativo
 (`extra_hosts: host.docker.internal:host-gateway` no `docker-compose.yml`).
 
-**Status atual**: o container sobe e o alvo fica configurado, mas o scrape ainda falha —
-`/metrics` hoje devolve JSON (`InMemoryMetricsCollector.snapshot()`), não o formato de
-texto do Prometheus. Falta implementar um `MetricsCollector` baseado em `prom-client`
-(interface já existe em `sdk/src/types.ts`, comentário em `sdk/src/metrics.ts` já aponta
-essa extensão) — issue de acompanhamento pendente.
+**Status atual**: `MetricsCollector` baseado em `prom-client` implementado —
+[`@heraldserver/prometheus`](https://www.npmjs.com/package/@heraldserver/prometheus).
+`/metrics` só devolve texto Prometheus de verdade se a app configurar
+`PrometheusMetricsCollector` explicitamente (default continua
+`InMemoryMetricsCollector`/JSON — ver README do pacote). Na PoC, isso é
+`HERALD_METRICS=prometheus`.
 
 **Gotcha conhecido**: em WSL2 + Docker Desktop rodando o app monitorado *fora* de
 container (fluxo de dev atual — `node dist/server.js` direto na distro), o container do

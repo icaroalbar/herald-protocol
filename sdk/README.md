@@ -275,5 +275,5 @@ sdk/
 
 ## Status
 
-Implementação de referência da Fase 2 do roadmap do Herald Protocol. Ainda não publicado no
-npm — uso local via `npm link` ou copiando `dist/` até a publicação formal.
+Implementação de referência da Fase 2 do roadmap do Herald Protocol. Publicado no npm como
+[`@heraldserver/sdk`](https://www.npmjs.com/package/@heraldserver/sdk).
