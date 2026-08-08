@@ -44,6 +44,30 @@ test("get() retorna o outpost por id; null se não existe", async () => {
   assert.equal(await store.get("000000000000"), null);
 });
 
+test("findByIdPrefix retorna Outposts cujo id começa com o prefixo, vazio se nenhum casa", async () => {
+  const created = await store.create();
+  const prefix = created.id.slice(0, 4);
+
+  const matches = await store.findByIdPrefix(prefix);
+  assert.ok(matches.some((o) => o.id === created.id));
+
+  assert.deepEqual(await store.findByIdPrefix("ffffzzzzzzzz-nao-existe"), []);
+});
+
+test("findByIdPrefix com id completo retorna só esse Outpost (prefixo do próprio id)", async () => {
+  const created = await store.create();
+  const matches = await store.findByIdPrefix(created.id);
+  assert.deepEqual(
+    matches.map((o) => o.id),
+    [created.id]
+  );
+});
+
+test("findByIdPrefix escapa caracteres especiais de LIKE (%, _) — não tratados como wildcard", async () => {
+  const matches = await store.findByIdPrefix("a%b_c");
+  assert.deepEqual(matches, []);
+});
+
 test("create() nasce active por padrão", async () => {
   const created = await store.create();
   const found = await store.get(created.id);

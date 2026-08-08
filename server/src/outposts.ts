@@ -130,6 +130,21 @@ export class PgOutpostStore {
     return rows.length ? toPublic(rows[0]) : null;
   }
 
+  /** Prefix matching tipo `docker` (id completo tem 12 hex chars, usuário pode digitar só
+   * os primeiros — ver resolveOutpost() em @herald/cli). Escapa `%`/`_`/`\` do prefixo:
+   * ids são sempre hex puro por construção, mas um prefixo digitado à mão poderia conter
+   * caracteres especiais de LIKE por acidente — não é injeção (query parametrizada), só
+   * evitaria correspondência incorreta. */
+  async findByIdPrefix(prefix: string): Promise<OutpostRecordPublic[]> {
+    const escaped = prefix.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+    const { rows } = await this.pool.query<OutpostRow>(
+      `SELECT id, name, key_prefix, created_at, last_seen_at, active FROM outposts
+       WHERE id LIKE $1 ESCAPE '\\' ORDER BY id ASC`,
+      [`${escaped}%`]
+    );
+    return rows.map(toPublic);
+  }
+
   async findIdByKey(plaintextKey: string): Promise<string | null> {
     const keyHash = crypto.createHash("sha256").update(plaintextKey).digest("hex");
     const { rows } = await this.pool.query<{ id: string }>(`SELECT id FROM outposts WHERE key_hash = $1`, [

@@ -97,7 +97,8 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 
 6. Acompanhe os Outposts pela linha de comando — sem tela, tudo via CLI. Depois do
    `herald configure` do passo 2, nenhum desses precisa de `--database-url` (só se quiser
-   apontar pra outro banco só naquela chamada específica):
+   apontar pra outro banco só naquela chamada específica). `<id>` aceita só os primeiros
+   caracteres, tipo `docker` — só precisa do id inteiro se o prefixo for ambíguo:
 
    ```bash
    herald outpost ls

@@ -1,4 +1,5 @@
 import { withDb } from "../db.js";
+import { resolveOutpost } from "../outpost-id.js";
 
 export interface OutpostDetail {
   id: string;
@@ -15,13 +16,10 @@ export interface OutpostInspectOptions {
   databaseUrl: string;
 }
 
-export async function inspectOutpost(id: string, options: OutpostInspectOptions): Promise<OutpostDetail> {
+export async function inspectOutpost(idPrefix: string, options: OutpostInspectOptions): Promise<OutpostDetail> {
   return withDb(options.databaseUrl, async ({ outposts, reports }) => {
-    const outpost = await outposts.get(id);
-    if (!outpost) {
-      throw new Error(`Outpost ${id} não encontrado`);
-    }
-    const latestReport = await reports.latest(id);
+    const outpost = await resolveOutpost(outposts, idPrefix);
+    const latestReport = await reports.latest(outpost.id);
     return { ...outpost, latestReport };
   });
 }
