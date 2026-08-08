@@ -10,7 +10,7 @@ import { pruneReports } from "./commands/outpost-prune.js";
 import { upsertEnvVars } from "./env-file.js";
 import { resolveDatabaseUrl, provisionDatabase } from "./db.js";
 import { saveDatabaseUrl } from "./config.js";
-import { assertSecureServerUrl } from "./security.js";
+import { assertSecureServerUrl } from "@heraldserver/outpost";
 import { defaultAsk, closePrompt } from "./prompt.js";
 
 function parseFlags(argv: string[]): Record<string, string> {

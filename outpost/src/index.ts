@@ -1,7 +1,10 @@
 /**
  * Push de métricas para um Herald Server (fluxo Outpost, ICA-34). Espelha o estilo de
- * closure de `agent-keys.ts` (createAgentKeyResolver), mas invertido: empurra em vez de
- * buscar.
+ * closure de agent-keys.ts (createAgentKeyResolver) do @heraldserver/sdk, mas invertido:
+ * empurra em vez de buscar. Pacote separado (não parte do @heraldserver/sdk) — mesmo
+ * espírito de @heraldserver/prometheus: quem só quer monitorar o backend não precisa
+ * puxar identificação/negociação/Policy Engine/assinatura junto, tipo Prisma Client
+ * separado do resto.
  */
 
 export interface OutpostReportingConfig {
@@ -50,7 +53,9 @@ export interface OutpostReporter {
 
 /**
  * `getSnapshot` é um callback (não um `MetricsCollector` concreto) para este módulo não
- * acoplar em `InMemoryMetricsCollector` — quem instancia decide de onde vem o snapshot.
+ * acoplar em nenhuma implementação específica de coleta de métricas — quem instancia
+ * decide de onde vem o snapshot (InMemoryMetricsCollector, PrometheusMetricsCollector,
+ * ou qualquer outra).
  */
 export function createOutpostReporter(getSnapshot: () => unknown, config: OutpostReportingConfig): OutpostReporter {
   if (!config.serverUrl || !config.outpostKey) {

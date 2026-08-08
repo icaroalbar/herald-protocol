@@ -1,14 +1,11 @@
 {
-  "name": "@heraldserver/cli",
+  "name": "@heraldserver/outpost",
   "version": "0.1.0",
-  "description": "CLI de referência para provisionar um Herald Outpost e configurar @heraldserver/gateway na sua aplicação.",
+  "description": "Cliente de push de métricas do Herald Protocol — reporta periodicamente pro control plane (@heraldserver/server), fluxo Outpost.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "herald": "./dist/bin.js"
-  },
   "files": [
     "dist",
     "!dist/**/*.test.js",
@@ -17,25 +14,20 @@
     "!dist/**/*.test.d.ts.map"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && chmod +x dist/bin.js",
+    "build": "tsc -p tsconfig.json",
     "test": "bash -c 'shopt -s globstar; node --test dist/**/*.test.js'"
-  },
-  "dependencies": {
-    "@heraldserver/server": "file:../server",
-    "@heraldserver/outpost": "file:../outpost",
-    "pg": "^8.11.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
-    "@types/node": "^20.0.0",
-    "@types/pg": "^8.11.0"
+    "@types/node": "^20.0.0"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
     "herald-protocol",
-    "cli",
-    "outpost"
+    "outpost",
+    "monitoring",
+    "reporting"
   ]
 }

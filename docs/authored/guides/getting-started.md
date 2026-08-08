@@ -34,6 +34,7 @@ SDK cru (`@heraldserver/sdk`, só o que você precisar).
 
    ```bash
    cd sdk && npm install && npm run build
+   cd ../outpost && npm install && npm run build
    cd ../gateway && npm install && npm run build
    cd ../server && npm install && npm run build
    cd ../cli && npm install && npm run build && npm link

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createOutpostReporter, assertSecureServerUrl } from "./reporting.js";
+import { createOutpostReporter, assertSecureServerUrl } from "./index.js";
 
 function fakeFetch(handler: (url: string, init: RequestInit) => { ok: boolean; status?: number }): typeof fetch {
   return (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
@@ -16,6 +16,17 @@ test("createOutpostReporter lanca sincronamente se serverUrl ou outpostKey vazio
 
 test("assertSecureServerUrl aceita https:// de qualquer host", () => {
   assert.doesNotThrow(() => assertSecureServerUrl("https://server.example.com"));
+});
+
+test("assertSecureServerUrl com https:// não depende do hostname ser loopback", () => {
+  // https:// já é seguro independente do host — isLoopbackHost não entra na decisão.
+  assert.doesNotThrow(() => assertSecureServerUrl("https://qualquer-coisa.exemplo.com"));
+});
+
+test("assertSecureServerUrl não trata subdomínio como loopback (ex: localhost.evil.com)", () => {
+  // http:// em "localhost.evil.com" tem que continuar rejeitado — só match exato de
+  // hostname conta como loopback, não sufixo/substring.
+  assert.throws(() => assertSecureServerUrl("http://localhost.evil.com"), /HTTPS/);
 });
 
 test("assertSecureServerUrl aceita http:// em localhost/127.0.0.1/::1 sem allowInsecureHttp", () => {

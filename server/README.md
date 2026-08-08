@@ -11,7 +11,7 @@ Duas formas de falar com este pacote, cada uma pra um consumidor diferente:
   criar/listar/revogar/inspecionar Outposts direto no Postgres, sem HTTP no meio.
   `PgOutpostStore`, `PgReportsStore`, `createPool`, `migrate`, `SCHEMA_SQL` (`src/lib.ts`).
 - **HTTP** (processo `npm start`, `POST /api/outposts/reports`) — o Gateway/app monitorada
-  usa isso pra empurrar métricas (`@heraldserver/sdk`'s `createOutpostReporter`,
+  usa isso pra empurrar métricas (`@heraldserver/outpost`'s `createOutpostReporter`,
   `HERALD_SERVER_URL`). É a única rota HTTP que existe — a app monitorada nunca precisa
   (nem deve) ter credencial de Postgres, só a Outpost key.
 

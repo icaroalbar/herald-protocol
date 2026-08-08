@@ -1,10 +1,11 @@
 # Herald Protocol — Plano de Testes
 
-> Cobre os 7 pacotes testados da implementação de referência: `@heraldserver/sdk`,
-> `@heraldserver/gateway`, `@herald/dashboard`, `@heraldserver/server`, `@heraldserver/cli`,
-> `@heraldserver/prometheus`, `@herald/poc` (`@herald/docs` não tem testes automatizados — é o
-> site de documentação). Complementa (não substitui) [`poc/README.md`](./poc/README.md),
-> que descreve a validação e2e manual já existente.
+> Cobre os 8 pacotes testados da implementação de referência: `@heraldserver/sdk`,
+> `@heraldserver/outpost`, `@heraldserver/gateway`, `@herald/dashboard`,
+> `@heraldserver/server`, `@heraldserver/cli`, `@heraldserver/prometheus`, `@herald/poc`
+> (`@herald/docs` não tem testes automatizados — é o site de documentação). Complementa
+> (não substitui) [`poc/README.md`](./poc/README.md), que descreve a validação e2e manual
+> já existente.
 
 ## 1. Estratégia
 
@@ -13,13 +14,14 @@ Pirâmide de testes adotada, do mais barato/rápido ao mais caro/lento:
 | Nível | O que cobre | Ferramenta | Status |
 |---|---|---|---|
 | Unitário | Funções puras do `@heraldserver/sdk` (identificação, negociação, Policy Engine, assinatura, discovery, métricas) | `node:test` + `node:assert/strict` (nativo, zero dependência nova) | Implementado (este documento) |
+| Unitário | `createOutpostReporter`/`assertSecureServerUrl` do `@heraldserver/outpost` — `fetchImpl` injetável, sem rede real | `node:test` | Implementado |
 | Integração | Pipeline do `@heraldserver/gateway` como um todo (Express + SDK), sem servidor HTTP real | `node:test` + `supertest` | Implementado |
 | Integração | Agregação `/api/metrics` do `@herald/dashboard` (múltiplos Gateways, um fora do ar) | `node:test` + `supertest`, `fetch` mockado | Implementado |
 | Integração | `PgOutpostStore`/`PgReportsStore`/rota de push do `@heraldserver/server`, contra Postgres real | `node:test` + `supertest`, banco efêmero por arquivo de teste | Implementado |
 | Integração | Comandos do `@heraldserver/cli` (`configure`/`outpost create/ls/inspect/stop/start/rm/prune`), contra Postgres real via `@heraldserver/server` | `node:test`, banco efêmero por arquivo de teste | Implementado |
 | Unitário | `PrometheusMetricsCollector` do `@heraldserver/prometheus` — contadores/histograma por `agent_type`, sem `agentId` como label | `node:test`, `Registry` do próprio `prom-client` (sem infra externa) | Implementado |
 | E2E / smoke | Servidor real + requisições HTTP reais, os 5 pontos do projeto + verificação de assinatura | Script dedicado (`poc/src/demo.ts`) | Implementado (Fase PoC) |
-| CI | Build + testes dos 6 pacotes testáveis + smoke e2e da PoC a cada push/PR, com Postgres real (`services:`) | GitHub Actions (`.github/workflows/ci.yml`) | Implementado |
+| CI | Build + testes dos 7 pacotes testáveis + smoke e2e da PoC a cada push/PR, com Postgres real (`services:`) | GitHub Actions (`.github/workflows/ci.yml`) | Implementado |
 | Manual/exploratório | Dashboard (visual), casos de borda não cobertos por automação | Checklist (§6) | Parcial |
 
 Escolha de `node:test` em vez de Jest/Vitest: os pacotes já seguem a filosofia de dependências
@@ -36,6 +38,19 @@ verificação de assinatura descrita em SIGNATURES.md, e o fluxo de monetizaçã
 descrito em MONETIZATION.md). Funções puras, sem I/O (exceto `signature.ts`, que usa
 `node:crypto` de forma síncrona) — o cenário ideal para teste unitário rápido e
 determinístico.
+
+### `@heraldserver/outpost` — prioridade alta (implementado)
+
+Cliente de push de métricas (fluxo Outpost) — extraído do `@heraldserver/sdk` em
+2026-08-08 (pacote separado, zero dependência de runtime, mesmo espírito do
+`@heraldserver/prometheus`: quem só quer reportar métricas não precisa puxar
+identificação/negociação/Policy Engine/assinatura junto). Testes usam `fetchImpl`
+injetável, sem rede real: `createOutpostReporter` lança sincronamente com
+`serverUrl`/`outpostKey` vazios, `assertSecureServerUrl` (HTTPS obrigatório fora de
+loopback, `allowInsecureHttp` como escape hatch — mesma checagem que `cli/src/index.ts`
+importa direto deste pacote agora, removendo uma duplicação que existia antes),
+`reportOnce()` nunca lança mesmo com `fetch` rejeitando, `start()`/`start()` idempotente,
+`stop()` interrompe de verdade (sem chamada residual depois).
 
 ### `@heraldserver/gateway` — prioridade média (implementado)
 
@@ -94,15 +109,13 @@ diferente de `rm`), e `prune` (com/sem `<id>` pra escopar, cutoff exato de
 `--older-than-days`, exigência de flag sem default). Requer o mesmo Postgres do
 `@heraldserver/server` (é `file:../server`).
 
-`security.ts` (`assertSecureServerUrl`/`isLoopbackHost`, usado por `outpost init` na
-validação de `--server-url`) ganhou `security.test.ts` dedicado em 2026-08-08 — não tinha
-nenhuma cobertura antes, nem direta nem indireta (o único teste de `outpost init` em
-`index.test.ts` só exercitava o caminho feliz com `https://`). Auditado nessa mesma
-rodada contra a cópia equivalente em `sdk/src/reporting.ts` (`diff` conceitual, não
-byte-a-byte como o de `outposts.ts` — mensagens de erro diferem de propósito, lógica
-idêntica) e contra alguns casos adversariais de parsing de URL (userinfo com "localhost"
-embutido, subdomínio `localhost.evil.com`, protocolo sem `//`) — nenhum bypass da
-propriedade de segurança (HTTPS ou loopback exato ou opt-out explícito) encontrado.
+A validação de `--server-url` em `outpost init` (`assertSecureServerUrl`) não vive mais
+duplicada dentro do CLI — importada direto de `@heraldserver/outpost` desde a extração
+de 2026-08-08 (antes era uma cópia própria em `cli/src/security.ts`, sem teste nenhum até
+uma auditoria em 2026-08-08 ter achado a lacuna e adicionado cobertura; essa cobertura
+— incluindo os casos adversariais de parsing de URL, subdomínio `localhost.evil.com`,
+HTTPS independente de loopback — migrou junto pro pacote `@heraldserver/outpost` na
+extração, ver seção acima).
 
 ### `@heraldserver/prometheus` — prioridade média (implementado)
 
@@ -275,22 +288,24 @@ compilado do anterior via `file:../<pacote>`, não é workspace npm). `@heraldse
 cd server && docker compose up -d   # Postgres — necessário antes de server/ e cli/
 
 cd sdk        && npm install && npm run build && npm test
-cd ../gateway  && npm install && npm run build && npm test
-cd ../dashboard && npm install && npm run build && npm test
-cd ../server    && npm install && npm run build \
-                && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm test
-cd ../cli        && npm install && npm run build \
-                && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm test
-cd ../prometheus  && npm install && npm run build && npm test
-cd ../poc          && npm install && npm run build
+cd ../outpost  && npm install && npm run build && npm test
+cd ../gateway   && npm install && npm run build && npm test
+cd ../dashboard  && npm install && npm run build && npm test
+cd ../server      && npm install && npm run build \
+                  && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm test
+cd ../cli          && npm install && npm run build \
+                  && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm test
+cd ../prometheus    && npm install && npm run build && npm test
+cd ../poc            && npm install && npm run build
 # em um terminal: npm start   |   em outro: npm run demo
 ```
 
-Em CI (`.github/workflows/ci.yml`), os 6 pacotes testáveis são buildados/testados nessa
+Em CI (`.github/workflows/ci.yml`), os 7 pacotes testáveis são buildados/testados nessa
 mesma ordem a cada push/PR para `main` — `server`/`cli` contra um Postgres real via
 `services:` nativo do GitHub Actions (mesmo `DATABASE_URL` acima) — incluindo o smoke e2e
 da PoC (servidor sobe em background, `npm run demo` roda contra ele). A ordem não é
-arbitrária: `cli/` depende de `@heraldserver/server` (`file:../server`) e `poc/` depende de
+arbitrária: `gateway/` depende de `@heraldserver/sdk` E `@heraldserver/outpost`; `cli/`
+depende de `@heraldserver/server` E `@heraldserver/outpost`; `poc/` depende de
 `@heraldserver/prometheus` (`file:../prometheus`) — cada um precisa do `dist/` do outro já
 buildado antes do próprio `npm install`.
 
@@ -298,7 +313,8 @@ buildado antes do próprio `npm install`.
 
 Este plano considera a Fase de Testes minimamente cumprida quando:
 
-1. Os testes unitários do `@heraldserver/sdk` (§3) passam limpos (`npm test`).
+1. Os testes unitários do `@heraldserver/sdk` e `@heraldserver/outpost` (§3) passam
+   limpos (`npm test`).
 2. Os testes de integração do `@heraldserver/gateway`, `@herald/dashboard`, `@heraldserver/server` e
    `@heraldserver/cli` passam limpos (`npm test`).
 3. Os testes unitários do `@heraldserver/prometheus` passam limpos (`npm test`).

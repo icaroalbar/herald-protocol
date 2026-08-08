@@ -6,16 +6,17 @@ on:
   pull_request:
     branches: [main]
 
-# Builda e testa os pacotes na ordem de dependência real (sdk -> gateway/dashboard ->
-# server -> cli -> prometheus -> poc). Cada pacote usa dependências locais via
+# Builda e testa os pacotes na ordem de dependência real (sdk/outpost -> gateway/dashboard
+# -> server -> cli -> prometheus -> poc). Cada pacote usa dependências locais via
 # "file:../<pacote>" (não é um monorepo com workspaces npm) — por isso o build de um
 # pacote precisa ter rodado antes do `npm install` do próximo, senão ele copia um `dist/`
-# desatualizado ou inexistente. Ver TESTPLAN.md §5. cli/ depende de @herald/server
-# (file:../server) pra falar direto com Postgres — Server precisa rodar antes de CLI.
-# poc/ depende de @herald/prometheus (file:../prometheus) — prometheus precisa rodar
-# antes de poc. server/ e cli/ também são os únicos pacotes com dependência externa real
-# (Postgres), daí o bloco `services:` abaixo (nativo do GitHub Actions, sem tooling extra)
-# e o DATABASE_URL nos dois steps.
+# desatualizado ou inexistente. Ver TESTPLAN.md §5. gateway/ depende de @heraldserver/sdk
+# E @heraldserver/outpost — os dois precisam rodar antes. cli/ depende de
+# @heraldserver/server (falar direto com Postgres) E @heraldserver/outpost (checagem de
+# HTTPS, mesma usada por gateway/). poc/ depende de @heraldserver/prometheus — prometheus
+# precisa rodar antes de poc. server/ e cli/ também são os únicos pacotes com dependência
+# externa real (Postgres), daí o bloco `services:` abaixo (nativo do GitHub Actions, sem
+# tooling extra) e o DATABASE_URL nos dois steps.
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -43,6 +44,13 @@ jobs:
 
       - name: SDK — install, build, test
         working-directory: sdk
+        run: |
+          npm install
+          npm run build
+          npm test
+
+      - name: Outpost — install, build, test
+        working-directory: outpost
         run: |
           npm install
           npm run build

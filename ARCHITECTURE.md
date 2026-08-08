@@ -3,7 +3,8 @@
 > Referência normativa: [RFC-0001](./RFC-0001.md). Este documento descreve a arquitetura
 > de referência que implementa o protocolo — não é normativo, mas reflete as decisões de
 > design da implementação de referência: núcleo do protocolo (SDK, Gateway, Policy
-> Engine) e control plane opcional (Server, CLI, Prometheus Adapter, Dashboard congelado).
+> Engine) e control plane opcional (Server, CLI, Outpost Reporter, Prometheus Adapter,
+> Dashboard congelado).
 
 ## 1. Visão Geral dos Componentes
 
@@ -32,6 +33,7 @@ abaixo — "self-hosting zero infra" continua verdadeiro pro núcleo do protocol
 |---|---|---|
 | **Server** (`@heraldserver/server`) | Control plane backed by Postgres — dupla função: **biblioteca** (`PgOutpostStore`/`PgReportsStore`, usada pelo CLI pra falar direto com o banco) e **processo HTTP mínimo** (uma rota só, `POST /api/outposts/reports`, recebe push de métricas autenticado por Outpost key) | Biblioteca: import direto pelo CLI. Processo: standalone, atrás de HTTPS em produção |
 | **CLI** (`@heraldserver/cli`, comando `herald`) | Provisiona/gerencia Outposts direto no Postgres (`create`/`ls`/`inspect`/`stop`/`start`/`rm`, prefix matching tipo `docker`) — nunca passa por HTTP pra isso. `outpost init`/`init` geram o `.env` (`HERALD_SERVER_URL`+`HERALD_OUTPOST_KEY`) que a app monitorada usa em runtime | Terminal do operador |
+| **Outpost Reporter** (`@heraldserver/outpost`) | Cliente de push — `createOutpostReporter` empurra o snapshot de métricas pro Server periodicamente, autenticado pela Outpost key. Pacote separado do SDK (zero dependência de runtime, mesmo espírito do Prometheus Adapter) — usado internamente por `@heraldserver/gateway` (`config.reporting`), disponível direto pra quem não usa o Gateway | No processo da aplicação origem, junto com o Gateway (ou standalone) |
 | **Prometheus Adapter** (`@heraldserver/prometheus`) | `MetricsCollector` alternativo ao in-memory, backed by `prom-client` — expõe `GET /metrics` do Gateway em formato de texto Prometheus/OpenMetrics em vez de JSON. Agrega só por `agent_type` (evita cardinalidade sem limite de `agentId`) | No processo da aplicação origem, junto com o Gateway (pacote opcional) |
 | **Dashboard (Agent Analytics)** — **congelado** | App web com gráficos que lê métricas via *polling* de `/metrics` de Gateways individuais. Congelado desde a decisão de priorizar CLI + Postgres sem UI — continua existindo e funcionando pro caso de uso original, mas não recebe desenvolvimento novo | Serviço separado, consome `/metrics` do(s) Gateway(s) via poll |
 
@@ -126,7 +128,8 @@ o outro precisa.
 - Não força uma capacidade específica sobre a aplicação — delega a transformação de
   conteúdo (HTML → JSON estruturado) para adaptadores configuráveis pela aplicação.
 - Opcionalmente empurra o snapshot de métricas pra um `@heraldserver/server` periodicamente
-  (`config.reporting`, fluxo Outpost — ver §2.2), independente do que `/metrics` expõe.
+  via `@heraldserver/outpost` (`config.reporting`, fluxo Outpost — ver §2.2), independente
+  do que `/metrics` expõe.
 
 **Policy Engine**
 - Estrutura de regras em árvore de precedência (recurso → agent-id → agent-type →
@@ -151,6 +154,19 @@ o outro precisa.
   no Postgres. `<id>` aceita prefixo (tipo `docker`), erro explícito se ambíguo.
 - `herald init` — grava `.env` (`HERALD_SERVER_URL`+`HERALD_OUTPOST_KEY`) numa app já com
   Outpost criado, sem precisar rodar `create` de novo.
+
+**Outpost Reporter (`@heraldserver/outpost`)**
+- `createOutpostReporter(getSnapshot, config)` — push periódico (`start`/`stop`,
+  `reportOnce` imediato) autenticado por `Authorization: Bearer <outpost-key>`.
+  `reportOnce()` nunca lança (falha de rede é rotina, não deve derrubar a app hospedeira).
+- `assertSecureServerUrl`/`isLoopbackHost` — exige HTTPS ou loopback exato pro
+  `serverUrl`, a menos que `allowInsecureHttp: true` explícito. `herald outpost init` no
+  CLI importa direto deste pacote pra validar `--server-url` antes de gravar o `.env` —
+  antes vivia duplicado (cópia própria em `cli/src/security.ts`), removido nesta extração.
+- Zero dependência de runtime, pacote separado do `@heraldserver/sdk` — quem só quer
+  reportar métricas (sem identificação/negociação/Policy Engine/assinatura) não precisa
+  puxar o resto do protocolo. `getSnapshot` é um callback genérico, não acoplado a nenhum
+  `MetricsCollector` concreto.
 
 **Prometheus Adapter (`@heraldserver/prometheus`)**
 - `PrometheusMetricsCollector` — implementa a mesma interface `MetricsCollector` do SDK,

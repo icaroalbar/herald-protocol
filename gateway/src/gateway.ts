@@ -19,9 +19,8 @@ import {
   type PaymentRequirements,
   type PaymentVerifier,
   type ResolvePublicKeyContext,
-  createOutpostReporter,
-  type OutpostReportingConfig,
 } from "@heraldserver/sdk";
+import { createOutpostReporter, type OutpostReportingConfig } from "@heraldserver/outpost";
 import { FormatterRegistry } from "./formatters.js";
 import { FixedWindowRateLimiter } from "./rate-limiter.js";
 import { setHeraldContext } from "./context.js";
