@@ -52,11 +52,12 @@ idempotente — sem framework de migração, ver `src/schema.ts`).
 
 ```bash
 DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
-# Herald Server rodando em http://localhost:4100
+# Herald Server rodando em http://localhost:4810
 ```
 
-Porta default `4100` — deliberadamente diferente do `4000` do `@herald/dashboard`, pra
-não colidir se alguém rodar os dois juntos durante a migração.
+Porta default `4810` — faixa `48xx` reservada pros apps ativos do Herald (`server`=4810,
+`poc`=4811), incomum o bastante pra não colidir com outra ferramenta rodando na mesma
+máquina. `@herald/dashboard` (congelado) fica em `4000`, fora dessa faixa.
 
 ## Observabilidade (Prometheus)
 
@@ -64,7 +65,7 @@ não colidir se alguém rodar os dois juntos durante a migração.
 docker compose up -d prometheus   # sobe junto com o Postgres, porta 9090
 ```
 
-`prometheus.yml` já vem configurado pra fazer scrape de `http://host.docker.internal:3000/metrics`
+`prometheus.yml` já vem configurado pra fazer scrape de `http://host.docker.internal:4811/metrics`
 (o `/metrics` de um app usando `@herald/gateway`, ex: `poc/`) — endereço portável,
 funciona em Docker Desktop (Mac/Windows) e em Linux com dockerd nativo
 (`extra_hosts: host.docker.internal:host-gateway` no `docker-compose.yml`).

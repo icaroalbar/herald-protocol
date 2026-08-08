@@ -2,10 +2,11 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  # Aponta pro /metrics de qualquer app usando @herald/gateway (aqui, a PoC em :3000).
-  # Formato JSON hoje (InMemoryMetricsCollector) — scrape vai falhar até existir um
-  # MetricsCollector com prom-client servindo texto Prometheus nesse mesmo path.
+  # Aponta pro /metrics de qualquer app usando @herald/gateway (aqui, a PoC em :4811).
+  # Só retorna texto Prometheus de verdade se a app usar @herald/prometheus
+  # (HERALD_METRICS=prometheus na PoC) — com o InMemoryMetricsCollector default (JSON),
+  # o scrape falha.
   - job_name: "herald-gateway"
     static_configs:
-      - targets: ["host.docker.internal:3000"]
+      - targets: ["host.docker.internal:4811"]
     metrics_path: /metrics

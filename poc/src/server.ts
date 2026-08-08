@@ -1,7 +1,7 @@
 import { createPocApp } from "./app.js";
 
 const { app, gateway } = createPocApp();
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT ?? 4811);
 
 gateway.startReporting();
 

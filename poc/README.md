@@ -28,9 +28,9 @@ Terminal 1 — sobe a aplicação de exemplo:
 
 ```bash
 npm start
-# Herald PoC rodando em http://localhost:3000
-# Discovery: http://localhost:3000/.well-known/herald
-# Métricas:  http://localhost:3000/metrics
+# Herald PoC rodando em http://localhost:4811
+# Discovery: http://localhost:4811/.well-known/herald
+# Métricas:  http://localhost:4811/metrics
 ```
 
 Terminal 2 — roda a validação dos 5 pontos:
@@ -50,13 +50,13 @@ CLI](../docs/authored/guides/getting-started.md)). Sem essas duas variáveis, na
 cd ../cli && node dist/bin.js outpost create --database-url postgres://herald:herald@localhost:5432/herald_server --name poc
 # guarde a key retornada
 
-HERALD_SERVER_URL=http://localhost:4100 HERALD_OUTPOST_KEY=<key> npm start
+HERALD_SERVER_URL=http://localhost:4810 HERALD_OUTPOST_KEY=<key> npm start
 ```
 
 Saída esperada (todas as linhas `OK`):
 
 ```
-Validando PoC Herald em http://localhost:3000
+Validando PoC Herald em http://localhost:4811
 
 OK   1. Identificacao de agentes — Herald-Policy-Decision presente: "intent=read; result=allow; rule=by_agent_type.assistant"
 OK   2. Resposta diferenciada sem alterar conteudo — JSON estruturado (agente) contem o mesmo titulo/corpo do HTML servido ao humano
@@ -70,7 +70,7 @@ OK   8. Monetizacao (x402) - primeira tentativa retorna Payment-Required — Pay
 OK   9. Monetizacao (x402) - pagamento valido libera o recurso — GET /artigos/relatorio-premium com Payment-Signature valido -> HTTP 200, Payment-Response.success=true
 OK   10. Monetizacao (x402) - pagamento insuficiente continua bloqueado — GET /artigos/relatorio-premium com Payment-Signature de valor insuficiente -> HTTP 402 (esperado 402)
 
-10/10 validacoes passaram.
+11/11 validacoes passaram.
 ```
 
 Terminal 3 (opcional) — sobe o Dashboard apontando pra este Gateway e vê as métricas
@@ -78,7 +78,7 @@ reais depois de rodar `npm run demo`:
 
 ```bash
 cd ../dashboard
-HERALD_GATEWAYS="poc=http://localhost:3000/metrics" npm start
+HERALD_GATEWAYS="poc=http://localhost:4811/metrics" npm start
 # abra http://localhost:4000
 ```
 

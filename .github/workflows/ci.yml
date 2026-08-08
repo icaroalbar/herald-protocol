@@ -97,15 +97,15 @@ jobs:
         working-directory: poc
         run: |
           set -e
-          PORT=3000 node dist/server.js &
+          PORT=4811 node dist/server.js &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
 
           for i in $(seq 1 20); do
-            if curl -sf http://localhost:3000/.well-known/herald > /dev/null; then
+            if curl -sf http://localhost:4811/.well-known/herald > /dev/null; then
               break
             fi
             sleep 0.5
           done
 
-          HERALD_POC_URL=http://localhost:3000 npm run demo
+          HERALD_POC_URL=http://localhost:4811 npm run demo

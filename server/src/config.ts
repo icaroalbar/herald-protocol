@@ -5,8 +5,9 @@ export interface ServerConfig {
 
 /**
  * Configuração via variáveis de ambiente:
- *   PORT           porta do Server (default 4100 — deliberadamente diferente do 4000 do
- *                  @herald/dashboard, pra não colidir se alguém rodar os dois juntos)
+ *   PORT           porta do Server (default 4810 — faixa 48xx reservada pros apps ativos
+ *                  do Herald, incomum o bastante pra não colidir com outra ferramenta
+ *                  rodando na mesma máquina; @herald/dashboard, congelado, fica em 4000)
  *   DATABASE_URL   connection string do Postgres (obrigatório, sem default — diferente
  *                  do resto da config, que sempre teve fallback local; ver
  *                  docker-compose.yml deste pacote pro valor padrão de desenvolvimento)
@@ -19,5 +20,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
         "ver docker-compose.yml deste pacote)."
     );
   }
-  return { port: Number(env.PORT ?? 4100), databaseUrl };
+  return { port: Number(env.PORT ?? 4810), databaseUrl };
 }

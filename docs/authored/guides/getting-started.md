@@ -53,7 +53,7 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    HTTP rodando pra isso, só do Postgres já configurado no passo 2:
 
    ```bash
-   herald outpost init --server-url http://localhost:4100 --name meu-app
+   herald outpost init --server-url http://localhost:4810 --name meu-app
    ```
 
    Isso cria o Outpost direto no banco **e** grava `HERALD_SERVER_URL`/
@@ -71,7 +71,7 @@ SDK cru (`@herald/sdk`, só o que você precisar).
 
    ```bash
    cd server && DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm start
-   # Herald Server rodando em http://localhost:4100
+   # Herald Server rodando em http://localhost:4810
    ```
 
 5. Configure o Gateway para reportar métricas periodicamente (carregar o `.env` — via

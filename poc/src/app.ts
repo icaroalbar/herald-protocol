@@ -39,7 +39,7 @@ export function createPocApp(): { app: Express; gateway: HeraldGateway } {
     // (texto Prometheus em /metrics, ver server/prometheus.yml pro scrape config).
     ...(process.env.HERALD_METRICS === "prometheus" ? { metrics: new PrometheusMetricsCollector() } : {}),
     discovery: {
-      origin: "http://localhost:3000",
+      origin: "http://localhost:4811",
       capabilities: ["structured-json", "html"],
       defaultPolicy: { read: "allow", train: "deny", redistribute: "deny" },
       byAgentType: {

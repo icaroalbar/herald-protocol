@@ -16,7 +16,7 @@
 
 import { signRequest, generateSigningKeyPair } from "@herald/sdk";
 
-const BASE_URL = process.env.HERALD_POC_URL ?? "http://localhost:3000";
+const BASE_URL = process.env.HERALD_POC_URL ?? "http://localhost:4811";
 
 interface CheckResult {
   name: string;
