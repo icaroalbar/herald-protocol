@@ -8,6 +8,12 @@ import type pg from "pg";
  * dependência de nenhum outro pacote; server/ é leaf igual cli/ nesse sentido. Se algum
  * detalhe de segurança da geração de chave mudar (prefixo, algoritmo de hash), precisa
  * mudar nos dois lugares à mão — não tem compilador/teste garantindo sincronia entre eles.
+ *
+ * AUDITADO em 2026-08-08: `diff` byte-a-byte entre este bloco (KEY_PREFIX → fim de
+ * generateOutpostKey) e o equivalente em dashboard/src/outposts.ts — idênticos. Risco
+ * aceito e registrado, não eliminado: só dá pra unificar de verdade descongelando
+ * dashboard/ ou criando um pacote compartilhado que ele importaria, e nenhuma das duas
+ * coisas está no escopo atual. Re-audite manualmente se mexer num dos dois lados.
  */
 
 const KEY_PREFIX = "hrld_op_";

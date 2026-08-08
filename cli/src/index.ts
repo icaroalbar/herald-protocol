@@ -6,6 +6,7 @@ import { removeOutpost } from "./commands/outpost-remove.js";
 import { inspectOutpost } from "./commands/outpost-inspect.js";
 import { stopOutpost } from "./commands/outpost-stop.js";
 import { startOutpost } from "./commands/outpost-start.js";
+import { pruneReports } from "./commands/outpost-prune.js";
 import { upsertEnvVars } from "./env-file.js";
 import { resolveDatabaseUrl, provisionDatabase } from "./db.js";
 import { saveDatabaseUrl } from "./config.js";
@@ -35,6 +36,7 @@ function printHelp(): void {
   herald outpost start    <id> [--database-url <url>]
   herald outpost rm       <id> [--database-url <url>]
   herald outpost inspect  <id> [--database-url <url>]
+  herald outpost prune    [<id>] --older-than-days <n> [--database-url <url>]
   herald init
 
   configure        roda uma vez, na instalação: aplica o schema no banco e salva a URL
@@ -51,6 +53,8 @@ function printHelp(): void {
   outpost rm       remove/revoga um Outpost pra sempre (a key dele para de funcionar,
                    histórico de reports é apagado — irreversível, diferente de "stop")
   outpost inspect  mostra detalhes + o último snapshot de métricas recebido
+  outpost prune    apaga reports mais antigos que --older-than-days (manual, sem cron —
+                   sem <id>, poda de todos os Outposts; com, só desse). Irreversível
   init             pergunta a URL do Server + uma key já existente, grava/atualiza .env
 
   --database-url   connection string do Postgres — só é obrigatório em "herald configure";
@@ -59,6 +63,8 @@ function printHelp(): void {
   --server-url     endereço HTTP do processo @herald/server (só em "outpost init", vai
                    pro .env — é o que o Gateway usa em runtime pra empurrar métricas, nunca
                    toca o banco)
+  --older-than-days   janela de retenção pro "outpost prune" — obrigatório, sem default
+                      (ação destrutiva não tem valor mágico silencioso)
   --allow-insecure-http   permite --server-url em HTTP fora de localhost (a key viaja em
                           texto puro na rede) — só use se a conexão já está protegida por
                           outra camada (VPN/rede privada), nunca na internet pública`);
@@ -287,6 +293,34 @@ export async function runOutpostInspectCommand(argv: string[]): Promise<void> {
   }
 }
 
+export async function runOutpostPruneCommand(argv: string[]): Promise<void> {
+  const hasLeadingId = argv.length > 0 && !argv[0].startsWith("--");
+  const idPrefix = hasLeadingId ? argv[0] : undefined;
+  const flags = parseFlags(hasLeadingId ? argv.slice(1) : argv);
+
+  let databaseUrl: string;
+  try {
+    databaseUrl = await resolveDatabaseUrl(flags);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  const olderThanDays = Number(flags["older-than-days"]);
+  if (!flags["older-than-days"] || !Number.isFinite(olderThanDays) || olderThanDays <= 0) {
+    console.error("Uso: herald outpost prune [<id>] --older-than-days <n> [--database-url <url>]");
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const result = await pruneReports(idPrefix, { databaseUrl, olderThanDays });
+    console.log(`${result.deleted} report(s) apagado(s).`);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  }
+}
+
 export async function runCli(argv: string[]): Promise<void> {
   const [command, sub, ...rest] = argv;
 
@@ -299,6 +333,7 @@ export async function runCli(argv: string[]): Promise<void> {
   if (command === "outpost" && sub === "start") return runOutpostStartCommand(rest);
   if (command === "outpost" && sub === "rm") return runOutpostRmCommand(rest);
   if (command === "outpost" && sub === "inspect") return runOutpostInspectCommand(rest);
+  if (command === "outpost" && sub === "prune") return runOutpostPruneCommand(rest);
   if (!command || command === "-h" || command === "--help") return printHelp();
 
   console.error(`Comando desconhecido: ${[command, sub].filter(Boolean).join(" ")}`);

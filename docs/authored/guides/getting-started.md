@@ -107,6 +107,8 @@ SDK cru (`@herald/sdk`, só o que você precisar).
    herald outpost start <id>    # retoma — push volta a ser aceito
    herald outpost rm <id>       # revoga PRA SEMPRE (irreversível, diferente de stop) —
                                  # reports em cascata, push com a key antiga passa a 401
+   herald outpost prune --older-than-days 90       # poda reports antigos de todos
+   herald outpost prune <id> --older-than-days 90  # só desse Outpost — manual, sem cron
    ```
 
 > `@herald/dashboard` (UI web com gráficos) continua existindo, separado, pro caso de uso

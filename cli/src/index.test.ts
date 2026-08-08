@@ -17,6 +17,7 @@ import {
   runOutpostStartCommand,
   runOutpostRmCommand,
   runOutpostInspectCommand,
+  runOutpostPruneCommand,
 } from "./index.js";
 
 const { databaseUrl, dropDatabase } = await createTestDatabase();
@@ -189,5 +190,25 @@ test("outpost inspect com id + --database-url imprime o detalhe, sem exitCode", 
   process.exitCode = undefined;
   const created = await createOutpost({ databaseUrl, name: "inspect-alvo" });
   await runOutpostInspectCommand([created.id, "--database-url", databaseUrl]);
+  assert.equal(process.exitCode, undefined);
+});
+
+test("outpost prune sem --older-than-days nao lanca, seta exitCode 1", async () => {
+  process.exitCode = undefined;
+  await assert.doesNotReject(() => runOutpostPruneCommand(["--database-url", databaseUrl]));
+  assert.equal(process.exitCode, 1);
+  process.exitCode = undefined;
+});
+
+test("outpost prune sem id (todos os Outposts) nao seta exitCode em sucesso", async () => {
+  process.exitCode = undefined;
+  await runOutpostPruneCommand(["--older-than-days", "90", "--database-url", databaseUrl]);
+  assert.equal(process.exitCode, undefined);
+});
+
+test("outpost prune com id (prefixo) nao seta exitCode em sucesso", async () => {
+  process.exitCode = undefined;
+  const created = await createOutpost({ databaseUrl, name: "prune-cli-alvo" });
+  await runOutpostPruneCommand([created.id, "--older-than-days", "90", "--database-url", databaseUrl]);
   assert.equal(process.exitCode, undefined);
 });

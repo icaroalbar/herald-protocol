@@ -34,4 +34,18 @@ export class PgReportsStore {
     if (!rows.length) return null;
     return { reportedAt: rows[0].reported_at.toISOString(), snapshot: rows[0].snapshot };
   }
+
+  /** Poda reports com reported_at anterior ao cutoff — usado por `herald outpost prune`
+   * (manual, sem cron/job automático rodando sozinho — ver server/README.md). Sem
+   * outpostId, poda de todos os Outposts; com, escopa a um só. Retorna quantas linhas
+   * apagou. */
+  async pruneOlderThan(cutoffIso: string, outpostId?: string): Promise<number> {
+    const { rowCount } = outpostId
+      ? await this.pool.query(`DELETE FROM outpost_reports WHERE reported_at < $1 AND outpost_id = $2`, [
+          cutoffIso,
+          outpostId,
+        ])
+      : await this.pool.query(`DELETE FROM outpost_reports WHERE reported_at < $1`, [cutoffIso]);
+    return rowCount ?? 0;
+  }
 }

@@ -100,8 +100,8 @@ DATABASE_URL=postgres://herald:herald@localhost:5432/herald_server npm run build
 |---|---|
 | `POST /api/outposts/reports` | Push de métricas, autenticado via `Authorization: Bearer <key>`. Retorna `401` (key errada/desconhecida) ou `403 {error: "outpost_stopped"}` (key válida, mas o Outpost foi pausado via `herald outpost stop`) |
 
-Criar/listar/revogar/inspecionar/pausar/retomar Outpost não são mais rotas HTTP — são
-chamadas via `@herald/cli` (`herald outpost create/ls/rm/inspect/stop/start
+Criar/listar/revogar/inspecionar/pausar/retomar/podar Outpost não são mais rotas HTTP —
+são chamadas via `@herald/cli` (`herald outpost create/ls/rm/inspect/stop/start/prune
 --database-url ...`), que importa este pacote como biblioteca e fala direto com Postgres.
 
 ## Biblioteca (`@herald/server`)
@@ -120,8 +120,12 @@ invocado via `node dist/index.js`, tem efeito colateral (`app.listen`).
 
 ## Limitações conhecidas
 
-- Sem política de retenção — `outpost_reports` é append-only, cresce sem limite. Decisão
-  consciente (simplicidade primeiro); adicionar poda quando houver dado real de volume.
+- Sem retenção automática — `outpost_reports` é append-only por padrão. `herald outpost
+  prune [<id>] --older-than-days <n>` poda manualmente (tipo `docker system prune`, sem
+  cron/job rodando sozinho — decisão consciente, ver TESTPLAN.md §5). Fica com o operador
+  lembrar de rodar; não acontece sozinho.
 - Geração de id/nome/chave é duplicada verbatim de `dashboard/src/outposts.ts` (dashboard
   está congelado, não deve virar dependência de ninguém) — mudança de segurança nessa
-  lógica precisa ser replicada nos dois lugares à mão.
+  lógica precisa ser replicada nos dois lugares à mão. Auditado em 2026-08-08 (`diff`
+  byte-a-byte, ver `src/outposts.ts`): idênticos hoje — risco aceito e registrado, não
+  eliminado.

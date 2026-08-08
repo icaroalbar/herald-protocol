@@ -16,7 +16,7 @@ Pirâmide de testes adotada, do mais barato/rápido ao mais caro/lento:
 | Integração | Pipeline do `@herald/gateway` como um todo (Express + SDK), sem servidor HTTP real | `node:test` + `supertest` | Implementado |
 | Integração | Agregação `/api/metrics` do `@herald/dashboard` (múltiplos Gateways, um fora do ar) | `node:test` + `supertest`, `fetch` mockado | Implementado |
 | Integração | `PgOutpostStore`/`PgReportsStore`/rota de push do `@herald/server`, contra Postgres real | `node:test` + `supertest`, banco efêmero por arquivo de teste | Implementado |
-| Integração | Comandos do `@herald/cli` (`configure`/`outpost create/ls/inspect/stop/start/rm`), contra Postgres real via `@herald/server` | `node:test`, banco efêmero por arquivo de teste | Implementado |
+| Integração | Comandos do `@herald/cli` (`configure`/`outpost create/ls/inspect/stop/start/rm/prune`), contra Postgres real via `@herald/server` | `node:test`, banco efêmero por arquivo de teste | Implementado |
 | Unitário | `PrometheusMetricsCollector` do `@herald/prometheus` — contadores/histograma por `agent_type`, sem `agentId` como label | `node:test`, `Registry` do próprio `prom-client` (sem infra externa) | Implementado |
 | E2E / smoke | Servidor real + requisições HTTP reais, os 5 pontos do projeto + verificação de assinatura | Script dedicado (`poc/src/demo.ts`) | Implementado (Fase PoC) |
 | CI | Build + testes dos 6 pacotes testáveis + smoke e2e da PoC a cada push/PR, com Postgres real (`services:`) | GitHub Actions (`.github/workflows/ci.yml`) | Implementado |
@@ -80,7 +80,7 @@ por que 100ms não bastava sob carga concorrente da suíte inteira). Requer
 
 Comandos testados via chamada direta das funções exportadas de `index.ts`
 (`runOutpostCreateCommand` etc.), sem subprocess — mais rápido, cobertura igual. Cada
-comando de banco (`configure`, `outpost create/ls/inspect/stop/start/rm`) testado contra
+comando de banco (`configure`, `outpost create/ls/inspect/stop/start/rm/prune`) testado contra
 Postgres real via `createTestDatabase()` de `@herald/server` (deep-import de
 `@herald/server/dist/test-db.js` — helper de teste, não parte da superfície pública do
 pacote). Cobre: fallback de resolução de `--database-url` (flag > `DATABASE_URL` env >
@@ -89,8 +89,20 @@ config salva por `herald configure`, com isolamento de ambos numa mesma suíte �
 `~/.herald/config.json` real da máquina, sem apagar o que já existia lá), prompt
 interativo do `configure` sem `--database-url` (mesmo padrão de `herald init`), prefix
 matching de id (exato, único, ambíguo — lista os candidatos), `.env` gerado por
-`outpost init`/`init` (docker-style, um comando só), e o par `stop`/`start` (reversível,
-diferente de `rm`). Requer o mesmo Postgres do `@herald/server` (é `file:../server`).
+`outpost init`/`init` (docker-style, um comando só), o par `stop`/`start` (reversível,
+diferente de `rm`), e `prune` (com/sem `<id>` pra escopar, cutoff exato de
+`--older-than-days`, exigência de flag sem default). Requer o mesmo Postgres do
+`@herald/server` (é `file:../server`).
+
+`security.ts` (`assertSecureServerUrl`/`isLoopbackHost`, usado por `outpost init` na
+validação de `--server-url`) ganhou `security.test.ts` dedicado em 2026-08-08 — não tinha
+nenhuma cobertura antes, nem direta nem indireta (o único teste de `outpost init` em
+`index.test.ts` só exercitava o caminho feliz com `https://`). Auditado nessa mesma
+rodada contra a cópia equivalente em `sdk/src/reporting.ts` (`diff` conceitual, não
+byte-a-byte como o de `outposts.ts` — mensagens de erro diferem de propósito, lógica
+idêntica) e contra alguns casos adversariais de parsing de URL (userinfo com "localhost"
+embutido, subdomínio `localhost.evil.com`, protocolo sem `//`) — nenhum bypass da
+propriedade de segurança (HTTPS ou loopback exato ou opt-out explícito) encontrado.
 
 ### `@herald/prometheus` — prioridade média (implementado)
 
@@ -230,14 +242,18 @@ Express, que é justamente o que o nível e2e existe para cobrir.
   400 KB sem sinal de ReDoS (crescimento linear, não exponencial). Tamanho de header em si já
   é limitado pelo servidor HTTP (`--max-http-header-size` do Node, default 16 KiB) antes de
   chegar nos parsers.
-- **Retenção de `outpost_reports`** — não implementado. Tabela é append-only, sem
-  poda/TTL (ver ARCHITECTURE.md §5.3). Validado manualmente que o caminho de push
-  aguenta volume moderado (400 requisições concorrentes contra a PoC, mix
+- ~~**Retenção de `outpost_reports`**~~ — RESOLVIDO (2026-08-08): tabela continua
+  append-only por padrão (sem TTL automático, decisão consciente — ver ARCHITECTURE.md
+  §5.3), mas `herald outpost prune [<id>] --older-than-days <n>` poda manualmente
+  (`PgReportsStore.pruneOlderThan`, testado com/sem escopo de `id`, cutoff exato, 0
+  resultado quando nada casa). Sem cron/job automático de propósito — mesma filosofia de
+  "operador decide quando", tipo `docker system prune`. Validado manualmente que o
+  caminho de push aguenta volume moderado (400 requisições concorrentes contra a PoC, mix
   humano/agente/rate-limitado, via `Gateway` real → `@herald/server` → Postgres — sem
   erro, sem degradação de latência perceptível, contagens batendo exatamente no
   `herald outpost ls`/`inspect` depois), mas isso não é um teste de carga formal tipo
   `gateway/scripts/load-test.mjs` (não mede crescimento do banco ao longo do tempo/uso
-  sustentado) nem substitui decidir uma política de poda antes de uso em produção real.
+  sustentado).
 
 ## 6. Checklist manual (Dashboard e exploratório)
 
